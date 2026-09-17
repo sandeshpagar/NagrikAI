@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from .state import GrievanceAgentState, create_initial_agent_state
 from .tools import GrievanceAgentTools
 from services.llm_provider.factory import get_llm_provider
+from services.sla_engine import sla_engine
 
 logger = logging.getLogger("nagrikai.agent.graph")
 
@@ -167,19 +168,22 @@ class GrievanceAgentRunner:
             })
             return state
 
-        # Check for simulated SLA breach
-        sla_deadline_str = state.get("sla_deadline")
-        is_breached = False
-        if sla_deadline_str:
-            try:
-                deadline_dt = datetime.fromisoformat(sla_deadline_str.replace("Z", "+00:00"))
-                if now > deadline_dt.replace(tzinfo=None):
-                    is_breached = True
-            except Exception:
-                pass
+        # Statutory SLA evaluation via SlaEngine
+        sla_eval = sla_engine.evaluate_grievance({
+            "id": gid,
+            "priority": state.get("priority", "HIGH"),
+            "category": state.get("category", "Road Infrastructure"),
+            "department": state.get("department_code") or "PMC-CIVIL",
+            "ward": state.get("ward", "Ward 12"),
+            "status": state.get("status", "ASSIGNED"),
+            "created_at": state.get("created_at"),
+            "followup_count": state.get("followup_count", 0),
+            "escalation_level": state.get("escalation_level", 0),
+            "expected_resolution_at": state.get("expected_resolution_at") or state.get("sla_deadline"),
+        })
 
-        # If more than 3 follow-ups sent without response, escalate
-        if state.get("followup_count", 0) >= 3 or is_breached:
+        if sla_eval.escalation_recommended:
+            state["escalation_reason"] = sla_eval.escalation_reason or "Statutory SLA expired without resolution."
             state["next_step"] = "ESCALATE"
         else:
             state["next_step"] = "NOTIFY_CITIZEN"
@@ -190,11 +194,12 @@ class GrievanceAgentRunner:
         """Executes statutory escalation under Maharashtra RTSA 2015."""
         gid = state["grievance_id"]
         current_level = state.get("escalation_level", 0)
+        reason = state.get("escalation_reason") or "Statutory response SLA expired without field engineer acknowledgment."
         
         escalation_res = self.tools.escalate_grievance(
             grievance_id=gid,
             current_level=current_level,
-            reason="Statutory response SLA expired without field engineer acknowledgment."
+            reason=reason
         )
 
         state["escalation_level"] = escalation_res["escalation_level"]
@@ -204,7 +209,7 @@ class GrievanceAgentRunner:
         state["logs"].append({
             "timestamp": datetime.utcnow().isoformat(),
             "action": "ESCALATION_TRIGGERED",
-            "details": f"Escalated to Level {state['escalation_level']} ({escalation_res['senior_authority']['name']})."
+            "details": f"Escalated to Level {state['escalation_level']} ({escalation_res['senior_authority']['name']}). Reason: {reason}"
         })
 
         state["next_step"] = "NOTIFY_CITIZEN"

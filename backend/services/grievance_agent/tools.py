@@ -278,46 +278,59 @@ class GrievanceAgentTools:
     ) -> Dict[str, Any]:
         """
         Statutory escalation under Maharashtra RTSA 2015.
-        Advances escalation level (0 -> 1 -> 2) and assigns senior supervisor.
+        Advances escalation level (0 -> 1 -> 2 -> 3) and assigns senior supervisor.
+        Delegates to EscalationEngine for dynamic, non-universal department-specific chains.
         """
-        new_level = min(current_level + 1, 2)
-        grv = self.get_grievance(grievance_id)
-        senior_authority = self.get_authority(
-            ward=grv.get("ward", ""),
-            category=grv.get("category", ""),
-            escalation_level=new_level
-        )
-
-        # Update status & assignment
-        self.update_grievance_status(
-            grievance_id=grievance_id,
-            status="ESCALATED",
-            directive=f"Statutory Escalation Level {new_level}: Re-routed to {senior_authority['designation']} due to: {reason}"
-        )
-
-        # Dispatch escalation email to Senior Authority
-        self.send_authority_email(
-            grievance=grv,
-            authority=senior_authority,
-            notice_type=f"STATUTORY_ESCALATION_L{new_level}"
-        )
-
-        # Audit event
-        self.create_audit_event(
-            grievance_id=grievance_id,
-            action=f"STATUTORY_ESCALATION_LEVEL_{new_level}",
-            details=f"Escalated to {senior_authority['name']} ({senior_authority['designation']}). Reason: {reason}",
-            actor_type="AI_AGENT",
-            actor_name="NagrikAI Grievance Agent",
-            metadata={"new_level": new_level, "escalated_to": senior_authority}
-        )
-
-        return {
-            "escalation_level": new_level,
-            "senior_authority": senior_authority,
-            "reason": reason,
-            "escalated_at": datetime.utcnow().isoformat()
-        }
+        try:
+            from services.escalation_engine import escalation_engine
+            new_level = min(current_level + 1, 3)
+            event = escalation_engine.execute_escalation(
+                grievance_id=grievance_id,
+                target_level=new_level,
+                reason=reason,
+                actor_type="AI_AGENT",
+                actor_name="NagrikAI Grievance Agent"
+            )
+            return {
+                "escalation_level": event.to_level,
+                "senior_authority": event.to_authority,
+                "reason": reason,
+                "escalated_at": event.created_at,
+                "event_id": event.id
+            }
+        except Exception as err:
+            logger.warning(f"EscalationEngine delegation failed: {err}. Falling back to default.")
+            new_level = min(current_level + 1, 2)
+            grv = self.get_grievance(grievance_id)
+            senior_authority = self.get_authority(
+                ward=grv.get("ward", ""),
+                category=grv.get("category", ""),
+                escalation_level=new_level
+            )
+            self.update_grievance_status(
+                grievance_id=grievance_id,
+                status="ESCALATED",
+                directive=f"Statutory Escalation Level {new_level}: Re-routed to {senior_authority['designation']} due to: {reason}"
+            )
+            self.send_authority_email(
+                grievance=grv,
+                authority=senior_authority,
+                notice_type=f"STATUTORY_ESCALATION_L{new_level}"
+            )
+            self.create_audit_event(
+                grievance_id=grievance_id,
+                action=f"STATUTORY_ESCALATION_LEVEL_{new_level}",
+                details=f"Escalated to {senior_authority['name']} ({senior_authority['designation']}). Reason: {reason}",
+                actor_type="AI_AGENT",
+                actor_name="NagrikAI Grievance Agent",
+                metadata={"new_level": new_level, "escalated_to": senior_authority}
+            )
+            return {
+                "escalation_level": new_level,
+                "senior_authority": senior_authority,
+                "reason": reason,
+                "escalated_at": datetime.utcnow().isoformat()
+            }
 
     # Tool 10: create_audit_event
     def create_audit_event(

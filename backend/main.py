@@ -10,6 +10,8 @@ from routers.similarity import router as similarity_router
 from routers.authorities import router as authorities_router
 from routers.notifications import router as notifications_router
 from routers.agent import router as agent_router
+from routers.sla import router as sla_router
+from routers.escalations import router as escalations_router
 from services.supabase_client import get_supabase
 from services.llm_provider.factory import get_llm_provider
 
@@ -46,6 +48,8 @@ all_routers = [
     authorities_router,
     notifications_router,
     agent_router,
+    sla_router,
+    escalations_router,
 ]
 for r in all_routers:
     app.include_router(r, prefix=settings.API_V1_STR)
