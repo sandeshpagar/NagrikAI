@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
+import { analyzeGrievanceText } from "@/lib/ai/analyzer";
 
 export const dynamic = "force-dynamic";
 
@@ -277,6 +278,49 @@ export async function POST(req: NextRequest) {
       ]);
     } catch (actErr: any) {
       console.warn("Agent actions note:", actErr.message);
+    }
+
+    // Phase 6: Automated AI Grievance Analysis & Structured Schema Persistence
+    try {
+      const fullText = `${grievanceRow.title}. ${grievanceRow.description}`;
+      const aiAnalysis = await analyzeGrievanceText(fullText, {
+        language: grievanceRow.language,
+        location: {
+          ward: grievanceRow.address?.split(",")?.pop()?.trim() || "Ward 12",
+          address: grievanceRow.address,
+          lat: grievanceRow.latitude,
+          lng: grievanceRow.longitude,
+        },
+      });
+
+      await supabase.from("ai_analyses").insert({
+        grievance_id: grievanceId,
+        model_name: aiAnalysis.model_name,
+        category: aiAnalysis.category,
+        subcategory: aiAnalysis.subcategory,
+        severity_score: aiAnalysis.severity_score,
+        severity_description: `${aiAnalysis.priority} priority municipal risk index (${aiAnalysis.severity_score}/10.0)`,
+        summary: aiAnalysis.summary,
+        affected_population_estimate: `~${aiAnalysis.affected_population.toLocaleString()} residents`,
+        duration_text: aiAnalysis.duration,
+        jurisdiction_text: aiAnalysis.jurisdiction,
+        priority: aiAnalysis.priority,
+        entities: aiAnalysis.entities,
+        recommended_action: aiAnalysis.recommended_action,
+        recommendation_rationale: aiAnalysis.recommendation_rationale,
+        confidence: aiAnalysis.confidence,
+        raw_output: aiAnalysis,
+      });
+
+      // Update grievance metadata with AI refined classification
+      await supabase.from("grievances").update({
+        category: aiAnalysis.category,
+        subcategory: aiAnalysis.subcategory,
+        affected_population: aiAnalysis.affected_population,
+        duration_text: aiAnalysis.duration,
+      }).eq("id", grievanceId);
+    } catch (aiErr: any) {
+      console.warn("AI initial analysis note:", aiErr.message);
     }
 
     // Insert immutable audit log into public.audit_logs
