@@ -17,6 +17,14 @@ class AuthorityContact(BaseModel):
     department_code: Optional[str] = Field(None, description="Department code e.g. PMC-CIVIL")
     jurisdiction_name: Optional[str] = Field(None, description="Ward or municipal zone name")
 
+    @property
+    def department(self) -> str:
+        return self.department_name or ""
+
+    @property
+    def jurisdiction(self) -> str:
+        return self.jurisdiction_name or ""
+
 class EscalationTier(BaseModel):
     """
     Individual tier within the statutory 3-tier escalation ladder.
@@ -52,6 +60,10 @@ class AuthorityResolutionOutput(BaseModel):
     is_fallback: bool = Field(False, description="True if mapped via fallback due to missing rule")
     mapping_rule_id: str = Field(..., description="Unique mapping rule reference identifier")
     resolution_timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
+
+    @property
+    def authority(self) -> AuthorityContact:
+        return self.responsible_authority
 
 class BaseAuthorityMapper(ABC):
     """

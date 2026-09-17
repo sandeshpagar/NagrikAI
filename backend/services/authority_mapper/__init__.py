@@ -1,6 +1,6 @@
 from .base import AuthorityContact, EscalationTier, AuthorityResolutionInput, AuthorityResolutionOutput, BaseAuthorityMapper
 from .mapper_service import authority_mapper_service, AuthorityMapperService
-from .seed_data import PMC_AUTHORITY_MAPPINGS, FALLBACK_AUTHORITY_RESOLUTION
+from .seed_data import PMC_AUTHORITY_MAPPINGS, FALLBACK_AUTHORITY_RESOLUTION, PMC_AUTHORITIES
 
 __all__ = [
     "AuthorityContact",
@@ -11,5 +11,7 @@ __all__ = [
     "authority_mapper_service",
     "AuthorityMapperService",
     "PMC_AUTHORITY_MAPPINGS",
+    "PMC_AUTHORITIES",
     "FALLBACK_AUTHORITY_RESOLUTION",
 ]
+

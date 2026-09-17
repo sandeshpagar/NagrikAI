@@ -9,7 +9,9 @@ from routers.analysis import router as analysis_router
 from routers.similarity import router as similarity_router
 from routers.authorities import router as authorities_router
 from routers.notifications import router as notifications_router
+from routers.agent import router as agent_router
 from services.supabase_client import get_supabase
+from services.llm_provider.factory import get_llm_provider
 
 # Configure logging
 logging.basicConfig(
@@ -35,19 +37,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include Routers under /api/v1 and root
-app.include_router(grievances_router, prefix=settings.API_V1_STR)
-app.include_router(grievances_router)
-app.include_router(evidence_router, prefix=settings.API_V1_STR)
-app.include_router(evidence_router)
-app.include_router(analysis_router, prefix=settings.API_V1_STR)
-app.include_router(analysis_router)
-app.include_router(similarity_router, prefix=settings.API_V1_STR)
-app.include_router(similarity_router)
-app.include_router(authorities_router, prefix=settings.API_V1_STR)
-app.include_router(authorities_router)
-app.include_router(notifications_router, prefix=settings.API_V1_STR)
-app.include_router(notifications_router)
+# Include Routers under /api/v1, /api, and root for maximum client compatibility
+all_routers = [
+    grievances_router,
+    evidence_router,
+    analysis_router,
+    similarity_router,
+    authorities_router,
+    notifications_router,
+    agent_router,
+]
+for r in all_routers:
+    app.include_router(r, prefix=settings.API_V1_STR)
+    app.include_router(r, prefix="/api")
+    app.include_router(r)
 
 @app.get("/health", tags=["System"])
 async def health_check():
@@ -56,12 +59,14 @@ async def health_check():
     """
     supabase = get_supabase()
     db_status = "connected" if supabase is not None else "offline_or_unconfigured"
+    llm_provider = get_llm_provider()
     
     return {
         "status": "healthy",
         "service": settings.PROJECT_NAME,
         "version": settings.VERSION,
         "ai_provider": settings.AI_PROVIDER,
+        "active_llm": llm_provider.name,
         "database": db_status,
         "supabase_url": settings.NEXT_PUBLIC_SUPABASE_URL,
     }

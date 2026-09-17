@@ -317,3 +317,7 @@ FALLBACK_AUTHORITY_RESOLUTION: Dict[str, Any] = {
         }
     ]
 }
+
+# Alias for backward compatibility
+PMC_AUTHORITIES = PMC_AUTHORITY_MAPPINGS
+

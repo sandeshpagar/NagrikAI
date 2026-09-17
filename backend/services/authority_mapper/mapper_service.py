@@ -24,6 +24,28 @@ class AuthorityMapperService(BaseAuthorityMapper):
     def __init__(self, mappings: Optional[List[Dict[str, Any]]] = None):
         self.mappings = mappings or PMC_AUTHORITY_MAPPINGS
 
+    def map_authority(
+        self,
+        ward: Optional[str] = None,
+        category: Optional[str] = None,
+        department: Optional[str] = None,
+        jurisdiction: Optional[str] = None,
+        grievance_id: Optional[str] = None,
+        **kwargs
+    ) -> AuthorityResolutionOutput:
+        """
+        Backward-compatible and developer-friendly alias for resolve().
+        Accepts ward, category, jurisdiction, department directly as keywords.
+        """
+        j_input = jurisdiction or ward
+        inp = AuthorityResolutionInput(
+            jurisdiction=j_input,
+            category=category,
+            department=department,
+            grievance_id=grievance_id
+        )
+        return self.resolve(inp)
+
     def resolve(self, req: AuthorityResolutionInput) -> AuthorityResolutionOutput:
         """
         Resolves authority and escalation hierarchy from provided criteria or grievance data.

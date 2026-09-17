@@ -24,12 +24,17 @@ class Settings(BaseSettings):
     # Security & Internal API
     BACKEND_INTERNAL_SECRET: str = os.getenv("BACKEND_INTERNAL_SECRET", "nagrik_ai_sentinel_secret_2026")
     
-    # AI Provider Settings (Local Ollama vs Cloud Gemini)
-    AI_PROVIDER: str = os.getenv("AI_PROVIDER", "ollama")  # 'ollama' or 'gemini'
+    # AI Provider Settings (Local Ollama, OpenRouter, Cloud Gemini, or Heuristic)
+    AI_PROVIDER: str = os.getenv("AI_PROVIDER", "ollama")  # 'ollama', 'openrouter', 'gemini', 'heuristic'
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     OLLAMA_VISION_MODEL: str = os.getenv("OLLAMA_VISION_MODEL", "llama3.2-vision")
-    OLLAMA_TEXT_MODEL: str = os.getenv("OLLAMA_TEXT_MODEL", "llama3.1:8b")
+    OLLAMA_TEXT_MODEL: str = os.getenv("OLLAMA_TEXT_MODEL", "qwen2.5:7b")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    
+    # OpenRouter API Configuration (Free tier & Cloud models)
+    OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
+    OPENROUTER_BASE_URL: str = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+    OPENROUTER_MODEL: str = os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3.2-3b-instruct:free")
     
     # CORS
     CORS_ORIGINS: list[str] = [

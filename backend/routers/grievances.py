@@ -157,8 +157,8 @@ async def create_grievance(payload: GrievanceCreate):
                     actor_name=payload.citizen_name or "Citizen Resident",
                     metadata={"priority": payload.priority, "ledger_hash": ledger_hash}
                 )
-        except Exception as e:
-            logger.error(f"Error persisting grievance to Supabase: {e}")
+            except Exception as e:
+                logger.error(f"Error persisting grievance to Supabase: {e}")
     
     # Return structured grievance response
     if not inserted_grievance:
