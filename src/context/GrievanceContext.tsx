@@ -1,8 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { Grievance, GrievanceStatus, AuditLogEntry } from "@/lib/types";
 import { MOCK_GRIEVANCES, INITIAL_AUDIT_LOGS, INITIAL_GRIEVANCE_1042 } from "@/lib/mock-data";
+import { getGrievancesFromDb, getAuditLogsFromDb, insertGrievanceToDb } from "@/lib/supabase/db";
 
 interface NotificationItem {
   id: string;
@@ -69,6 +70,29 @@ export function GrievanceProvider({ children }: { children: React.ReactNode }) {
   ]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+
+  // Hydrate from live Supabase tables if configured and available
+  useEffect(() => {
+    const hydrateFromSupabase = async () => {
+      try {
+        const [dbGrievances, dbLogs] = await Promise.all([
+          getGrievancesFromDb(),
+          getAuditLogsFromDb(),
+        ]);
+        if (dbGrievances && dbGrievances.length > 0) {
+          setGrievances(dbGrievances);
+          const flagship = dbGrievances.find((g) => g.grievanceNumber === "GRV-2026-1042");
+          if (flagship) setActiveGrievance(flagship);
+        }
+        if (dbLogs && dbLogs.length > 0) {
+          setAuditLogs(dbLogs);
+        }
+      } catch (err) {
+        console.warn("Could not sync with Supabase tables:", err);
+      }
+    };
+    hydrateFromSupabase();
+  }, []);
 
   const markNotificationRead = (id: string) => {
     setNotifications((prev) =>
@@ -454,6 +478,11 @@ export function GrievanceProvider({ children }: { children: React.ReactNode }) {
     };
 
     setGrievances((prev) => [newGrievance, ...prev]);
+
+    // Asynchronously persist to Supabase if live DB is connected
+    insertGrievanceToDb(newGrievance).catch((err) => {
+      console.warn("Could not persist grievance to remote Supabase DB:", err);
+    });
 
     addAuditLog({
       grievanceNumber: newGrievance.grievanceNumber,
