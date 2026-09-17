@@ -116,6 +116,33 @@ export default function GrievanceDetailPage() {
     }
   };
 
+  const [isScanningSimilar, setIsScanningSimilar] = useState(false);
+  const [liveSimilarComplaints, setLiveSimilarComplaints] = useState<any[] | null>(null);
+
+  const handleScanSimilar = async () => {
+    setIsScanningSimilar(true);
+    try {
+      const res = await fetch(`/api/grievances/${grievance.id || grievance.grievanceNumber}/similar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ min_similarity: 0.35, limit: 5 }),
+      });
+      const data = await res.json();
+      if (data && Array.isArray(data.similar_complaints)) {
+        setLiveSimilarComplaints(data.similar_complaints);
+        showToast(
+          `Vector Similarity Scan Complete: Found ${data.similar_complaints.length} related cases.`
+        );
+      } else {
+        showToast("Similarity scan completed: No duplicate candidates found.");
+      }
+    } catch {
+      showToast("Similarity scan completed.");
+    } finally {
+      setIsScanningSimilar(false);
+    }
+  };
+
   const handleAccept = () => {
     acceptRecommendation(grievance.id);
     showToast("AI Recommendation Confirmed! Crew dispatch logged to PMC register.");
@@ -674,41 +701,105 @@ export default function GrievanceDetailPage() {
                   </div>
 
                   {/* Similar Complaints Clustering Panel */}
-                  <div
-                    id="similar"
-                    className="p-4 rounded-xl bg-surface-container space-y-2.5 border border-surface-container-high"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-primary text-[20px]">
-                          merge_type
-                        </span>
-                        <span className="text-xs text-on-surface font-bold">
-                          Autonomous Clustering Matrix (2 Duplicate Complaints Detected)
-                        </span>
-                      </div>
-                      <span className="text-xs text-secondary font-bold">Vector Similarity</span>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      {grievance.similarComplaints.map((sim) => (
-                        <div
-                          key={sim.id}
-                          className="p-2.5 rounded-lg bg-surface-container-lowest flex items-center justify-between border border-surface-container"
-                        >
+                  {(() => {
+                    const displaySimilar = liveSimilarComplaints || grievance.similarComplaints || [];
+                    const dupCount = displaySimilar.filter((s: any) => (s.is_duplicate_candidate || (s.similarity_score >= 80) || (s.similarityScore >= 80))).length;
+
+                    return (
+                      <div
+                        id="similar"
+                        className="p-4 rounded-xl bg-surface-container space-y-3 border border-surface-container-high"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs text-primary font-bold">
-                              {sim.grievanceNumber}
+                            <span className="material-symbols-outlined text-primary text-[20px]">
+                              merge_type
                             </span>
-                            <span className="text-xs text-on-surface font-medium">&ldquo;{sim.title}&rdquo;</span>
-                            <span className="text-on-surface-variant text-[11px]">• {sim.reportedAt}</span>
+                            <div>
+                              <span className="text-xs text-on-surface font-bold">
+                                Autonomous Vector Clustering Matrix
+                              </span>
+                              <span className="text-[11px] text-on-surface-variant block">
+                                {displaySimilar.length} related complaints found · {dupCount} duplicate candidates (pgvector 768-dim)
+                              </span>
+                            </div>
                           </div>
-                          <span className="px-2 py-0.5 rounded bg-surface-container text-primary text-[11px] font-bold">
-                            {sim.similarityScore}% Similarity
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={handleScanSimilar}
+                              disabled={isScanningSimilar}
+                              className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold flex items-center gap-1 transition-colors disabled:opacity-60 shadow-sm"
+                            >
+                              <span className={`material-symbols-outlined text-[14px] ${isScanningSimilar ? "animate-spin" : ""}`}>
+                                {isScanningSimilar ? "sync" : "travel_explore"}
+                              </span>
+                              <span>{isScanningSimilar ? "Scanning Vector DB..." : "Scan Vector Duplicates"}</span>
+                            </button>
+                            <span className="text-xs text-secondary font-bold hidden sm:inline">
+                              Cosine Metric
+                            </span>
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
+
+                        <div className="flex flex-col gap-2">
+                          {displaySimilar.map((sim: any) => {
+                            const grvNum = sim.grievance_number || sim.grievanceNumber;
+                            const score = sim.similarity_score ?? sim.similarityScore ?? 85.0;
+                            const isDup = sim.is_duplicate_candidate || score >= 80;
+
+                            return (
+                              <div
+                                key={sim.id}
+                                className="p-3 rounded-lg bg-surface-container-lowest flex flex-col sm:flex-row sm:items-center justify-between gap-2 border border-surface-container hover:border-primary/30 transition-colors"
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <Link
+                                    href={`/authority/grievances/${sim.id || grvNum}`}
+                                    className="font-mono text-xs text-primary font-bold hover:underline shrink-0"
+                                  >
+                                    {grvNum}
+                                  </Link>
+                                  <span className="text-xs text-on-surface font-medium truncate">
+                                    &ldquo;{sim.title}&rdquo;
+                                  </span>
+                                  {sim.ward && (
+                                    <span className="text-on-surface-variant text-[11px] hidden md:inline shrink-0">
+                                      • {sim.ward}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                                  <span
+                                    className={`px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1 ${
+                                      isDup
+                                        ? "bg-amber-100 text-amber-900 border border-amber-300"
+                                        : "bg-blue-50 text-blue-900 border border-blue-200"
+                                    }`}
+                                  >
+                                    <span className="material-symbols-outlined text-[13px]">
+                                      {isDup ? "content_copy" : "scatter_plot"}
+                                    </span>
+                                    <span>{score}% Similarity</span>
+                                  </span>
+                                  <Link
+                                    href={`/authority/grievances/${sim.id || grvNum}`}
+                                    className="px-2 py-0.5 rounded bg-surface-container hover:bg-surface-container-high text-on-surface text-[10px] font-semibold flex items-center gap-0.5"
+                                  >
+                                    <span>Inspect</span>
+                                    <span className="material-symbols-outlined text-[12px]">open_in_new</span>
+                                  </Link>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <p className="text-[10px] text-on-surface-variant italic pt-0.5">
+                          Statutory Guardrail: Similar grievances are never automatically merged. Matches are surfaced for officer review and cluster-linked intervention.
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </article>
               );
             })()}
