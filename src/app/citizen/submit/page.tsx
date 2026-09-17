@@ -1,8 +1,36 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useGrievances } from "@/context/GrievanceContext";
+
+interface EvidenceItem {
+  id: string;
+  name: string;
+  preview: string;
+  sizeStr: string;
+  source: "UPLOAD" | "CAMERA" | "PRELOADED";
+  timestamp: string;
+}
+
+const DEFAULT_EVIDENCE: EvidenceItem[] = [
+  {
+    id: "ev-001",
+    name: "IMG_20260917_102812.jpg",
+    preview: "https://lh3.googleusercontent.com/aida-public/AB6AXuAnAJFxBqyHHt4J-K6FHGffv49n4Tfg_AVfNQqTcl2U4e8wU9bn-5S4yyoFThRZooBQmEI2CdW3EH0N20qXHZ1eqbnj2Kbsw5znRUtvsAaEbOx19T7OsUjO63tESeyTfkDsdaCja4-HqKanrnGwhhVR3xq2i0_-Po6EpLvi9QGPalaI_p9rVZEqy22eraKdsAjBhuVADfoSq0zr20fW5r_cIQaHXAxGWS1OP6tWNUbs692-YKnDZTo7YA",
+    sizeStr: "4.2 MB",
+    source: "PRELOADED",
+    timestamp: "17 Sep 2026, 10:28 AM",
+  },
+  {
+    id: "ev-002",
+    name: "IMG_20260917_102905.jpg",
+    preview: "https://lh3.googleusercontent.com/aida-public/AB6AXuD0b0IOJA2Hr9bRQxyEW_8m2AsGVVSdHE31eCePxKOYdEgIRtKS5XmhwHSPmj1BzCSW7-xxv4tahmFSv6WZe0PYQy7QqgfYl1nrYI87EKlCJwACk5OmLZG--XeYOUeqqRuoVTiLUsQdJCj4SvDs8SdpfsTKi7Ix5pvfc3PRILpk3EIMhQKlsEm15s2LUKGmanU7Qfp_ofkJbL8pP3soDTEhJXvdrgePO1pvOvgGXNDRz0_HgFaQvmlLHg",
+    sizeStr: "3.8 MB",
+    source: "PRELOADED",
+    timestamp: "17 Sep 2026, 10:29 AM",
+  },
+];
 
 export default function SubmitGrievancePage() {
   const router = useRouter();
@@ -17,6 +45,17 @@ export default function SubmitGrievancePage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Evidence state & live camera
+  const [evidenceItems, setEvidenceItems] = useState<EvidenceItem[]>(DEFAULT_EVIDENCE);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
 
   // Successfully submitted grievance data for Step 6 confirmation receipt
   const [submittedData, setSubmittedData] = useState<{
@@ -69,6 +108,122 @@ export default function SubmitGrievancePage() {
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
+
+  // Camera & File Processing Handlers
+  const startCamera = async () => {
+    setCameraError(null);
+    setIsCameraOpen(true);
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Webcam API not supported in this browser. Please use the device photo selector.");
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+      mediaStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
+      }
+    } catch (err: any) {
+      console.error("Camera access error:", err);
+      setCameraError(
+        err.name === "NotAllowedError" || err.name === "PermissionDeniedError"
+          ? "Camera permission was denied. Please allow camera access in your browser settings or use the file upload option."
+          : `Live camera unavailable (${err.message || "No video input device"}). You can still upload files directly from your device.`
+      );
+    }
+  };
+
+  const stopCamera = () => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+    setIsCameraOpen(false);
+    setCameraError(null);
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+
+    const now = new Date();
+    const timeStr = `${now.getHours().toString().padStart(2, "0")}${now.getMinutes().toString().padStart(2, "0")}${now.getSeconds().toString().padStart(2, "0")}`;
+    const newEvidence: EvidenceItem = {
+      id: `cam-${Date.now()}`,
+      name: `CAMERA_CAPTURE_${timeStr}.jpg`,
+      preview: dataUrl,
+      sizeStr: "1.2 MB",
+      source: "CAMERA",
+      timestamp: now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+
+    setEvidenceItems((prev) => [newEvidence, ...prev]);
+    stopCamera();
+  };
+
+  const handleProcessFiles = (files: FileList | File[]) => {
+    const newItems: EvidenceItem[] = [];
+    Array.from(files).forEach((file) => {
+      if (!file.type.startsWith("image/")) return;
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+      const url = URL.createObjectURL(file);
+      newItems.push({
+        id: `upload-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        name: file.name,
+        preview: url,
+        sizeStr: `${sizeMB} MB`,
+        source: "UPLOAD",
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      });
+    });
+    if (newItems.length > 0) {
+      setEvidenceItems((prev) => [...newItems, ...prev]);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleProcessFiles(e.dataTransfer.files);
+    }
+  };
+
+  const handleDeleteEvidence = (id: string) => {
+    setEvidenceItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  // Clean up media stream on unmount
+  useEffect(() => {
+    return () => {
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
 
   const handleNextFromDescribe = () => {
     if (!description.trim()) {
@@ -136,16 +291,19 @@ export default function SubmitGrievancePage() {
       gps_accuracy: coords.accuracy,
       citizen_name: "Ramesh Kulkarni",
       citizen_phone: "+91 98220 54199",
-      evidence_items: [
-        {
-          storage_path: "evidence/IMG_20260917_102812.jpg",
-          file_name: "IMG_20260917_102812.jpg",
-          mime_type: "image/jpeg",
-          file_size: 4182900,
-          sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          metadata: { device: "Apple iPhone 14 Pro", latitude: 18.4965, longitude: 73.8312 },
+      evidence_items: evidenceItems.map((item) => ({
+        storage_path: `evidence/${item.name}`,
+        file_name: item.name,
+        mime_type: "image/jpeg",
+        file_size: 3800000,
+        sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        metadata: {
+          source: item.source,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          timestamp: item.timestamp,
         },
-      ],
+      })),
     };
 
     try {
@@ -203,6 +361,7 @@ export default function SubmitGrievancePage() {
     setDescription("");
     setAiPreview(null);
     setSubmittedData(null);
+    setEvidenceItems(DEFAULT_EVIDENCE);
     setStep(1);
   };
 
@@ -411,46 +570,221 @@ export default function SubmitGrievancePage() {
             Upload on-site photographs or camera captures. Our automated pipeline verifies authenticity and EXIF geotags.
           </p>
 
-          <div className="border-2 border-dashed border-surface-container-high rounded-2xl p-6 text-center space-y-3 bg-surface-container-low/40">
+          {/* Hidden File and Camera Inputs */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            multiple
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                handleProcessFiles(e.target.files);
+              }
+            }}
+          />
+          <input
+            type="file"
+            ref={cameraInputRef}
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                handleProcessFiles(e.target.files);
+              }
+            }}
+          />
+
+          {/* Drag and Drop Container */}
+          <div
+            onDragOver={handleDragOver}
+            onDragEnter={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-2xl p-6 text-center space-y-3 transition-all cursor-pointer ${
+              isDragging
+                ? "border-blue-500 bg-blue-50/70 dark:bg-blue-900/30 scale-[1.01]"
+                : "border-surface-container-high bg-surface-container-low/40 hover:bg-surface-container-low"
+            }`}
+          >
             <span className="material-symbols-outlined text-primary text-[36px]">
               cloud_upload
             </span>
             <div className="text-xs font-bold text-on-surface">
-              Drag and drop incident photographs or tap to capture
+              Drag and drop incident photographs or click to browse
             </div>
             <p className="text-[11px] text-on-surface-variant">
-              Supports JPEG, PNG, HEIC up to 10MB each
+              Supports JPEG, PNG, HEIC up to 10MB each (EXIF geotags auto-parsed)
             </p>
 
-            {/* Preloaded Sample Evidence Preview */}
-            <div className="grid grid-cols-2 gap-3 pt-2 text-left">
-              <div className="p-2 rounded-xl bg-surface-container-lowest border border-surface-container flex items-center gap-2">
-                <img
-                  alt="Proof"
-                  className="w-12 h-12 rounded-lg object-cover"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuAnAJFxBqyHHt4J-K6FHGffv49n4Tfg_AVfNQqTcl2U4e8wU9bn-5S4yyoFThRZooBQmEI2CdW3EH0N20qXHZ1eqbnj2Kbsw5znRUtvsAaEbOx19T7OsUjO63tESeyTfkDsdaCja4-HqKanrnGwhhVR3xq2i0_-Po6EpLvi9QGPalaI_p9rVZEqy22eraKdsAjBhuVADfoSq0zr20fW5r_cIQaHXAxGWS1OP6tWNUbs692-YKnDZTo7YA"
-                />
-                <div className="overflow-hidden">
-                  <div className="text-[11px] font-bold text-on-surface truncate">
-                    IMG_20260917_102812.jpg
+            {/* Direct Action Buttons */}
+            <div
+              className="flex flex-wrap items-center justify-center gap-2 pt-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="px-3.5 py-1.5 rounded-lg bg-surface-container text-xs font-bold text-on-surface hover:bg-surface-container-high transition-colors flex items-center gap-1.5 shadow-xs"
+              >
+                <span className="material-symbols-outlined text-[16px]">folder_open</span>
+                <span>Browse Files</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={startCamera}
+                className="px-3.5 py-1.5 rounded-lg bg-blue-600 text-xs font-bold text-white hover:bg-blue-700 transition-colors flex items-center gap-1.5 shadow-xs"
+              >
+                <span className="material-symbols-outlined text-[16px]">photo_camera</span>
+                <span>Live Camera</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                className="px-3.5 py-1.5 rounded-lg bg-emerald-700 text-xs font-bold text-white hover:bg-emerald-800 transition-colors flex items-center gap-1.5 shadow-xs sm:hidden"
+              >
+                <span className="material-symbols-outlined text-[16px]">camera</span>
+                <span>Camera Snap</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Live Camera Viewfinder Modal */}
+          {isCameraOpen && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl space-y-4 p-5 text-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-emerald-400 text-[22px]">photo_camera</span>
+                    <h3 className="text-sm font-bold">Live Camera Viewfinder</h3>
                   </div>
-                  <div className="text-[10px] text-secondary font-semibold">EXIF Geotagged</div>
+                  <button
+                    type="button"
+                    onClick={stopCamera}
+                    className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">close</span>
+                  </button>
                 </div>
-              </div>
-              <div className="p-2 rounded-xl bg-surface-container-lowest border border-surface-container flex items-center gap-2">
-                <img
-                  alt="Proof"
-                  className="w-12 h-12 rounded-lg object-cover"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0b0IOJA2Hr9bRQxyEW_8m2AsGVVSdHE31eCePxKOYdEgIRtKS5XmhwHSPmj1BzCSW7-xxv4tahmFSv6WZe0PYQy7QqgfYl1nrYI87EKlCJwACk5OmLZG--XeYOUeqqRuoVTiLUsQdJCj4SvDs8SdpfsTKi7Ix5pvfc3PRILpk3EIMhQKlsEm15s2LUKGmanU7Qfp_ofkJbL8pP3soDTEhJXvdrgePO1pvOvgGXNDRz0_HgFaQvmlLHg"
-                />
-                <div className="overflow-hidden">
-                  <div className="text-[11px] font-bold text-on-surface truncate">
-                    IMG_20260917_102905.jpg
+
+                {cameraError ? (
+                  <div className="p-4 rounded-xl bg-red-900/40 border border-red-700 text-xs text-red-200 space-y-2">
+                    <p>{cameraError}</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        stopCamera();
+                        fileInputRef.current?.click();
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-red-800 text-xs font-bold hover:bg-red-700"
+                    >
+                      Choose File Instead
+                    </button>
                   </div>
-                  <div className="text-[10px] text-secondary font-semibold">Contextual Angle</div>
-                </div>
+                ) : (
+                  <div className="relative rounded-xl overflow-hidden bg-black aspect-video flex items-center justify-center border border-slate-800">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] font-mono text-emerald-400 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                      LIVE VIEWFINDER
+                    </div>
+                  </div>
+                )}
+
+                {!cameraError && (
+                  <div className="flex items-center justify-between pt-2">
+                    <span className="text-[11px] text-slate-400">Position civic hazard within frame</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={stopCamera}
+                        className="px-3.5 py-2 rounded-xl bg-slate-800 text-xs font-semibold hover:bg-slate-700"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={capturePhoto}
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">camera</span>
+                        <span>Capture Photo</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
+          )}
+
+          {/* Dynamic Evidence List */}
+          <div className="space-y-2 pt-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-on-surface">Attached Evidence Photos ({evidenceItems.length})</span>
+              <span className="text-[11px] text-secondary font-semibold">AI Geotag & Cryptographic SHA-256 Audit Ready</span>
+            </div>
+
+            {evidenceItems.length === 0 ? (
+              <div className="p-4 rounded-xl bg-surface-container-low text-center text-xs text-on-surface-variant">
+                No photographs attached yet. Please drag & drop or take a photo above.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {evidenceItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-2.5 rounded-xl bg-surface-container-lowest border border-surface-container flex items-center justify-between gap-3 shadow-xs hover:border-surface-container-high transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5 overflow-hidden">
+                      <img
+                        alt={item.name}
+                        src={item.preview}
+                        className="w-12 h-12 rounded-lg object-cover flex-shrink-0 border border-surface-container"
+                      />
+                      <div className="overflow-hidden">
+                        <div className="text-[11px] font-bold text-on-surface truncate" title={item.name}>
+                          {item.name}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[10px] text-on-surface-variant">
+                          <span>{item.sizeStr}</span>
+                          <span>·</span>
+                          <span
+                            className={`px-1.5 py-0.5 rounded font-semibold ${
+                              item.source === "CAMERA"
+                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                : item.source === "UPLOAD"
+                                ? "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300"
+                                : "bg-surface-container text-secondary"
+                            }`}
+                          >
+                            {item.source === "CAMERA" ? "LIVE CAMERA" : item.source === "UPLOAD" ? "DEVICE UPLOAD" : "EXIF GEOTAGGED"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteEvidence(item.id)}
+                      className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container/20 transition-colors"
+                      title="Remove photo"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">delete</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex justify-between pt-2">
@@ -563,6 +897,12 @@ export default function SubmitGrievancePage() {
               <span className="text-on-surface-variant font-semibold">Summary:</span>{" "}
               <span className="font-medium text-on-surface">{description}</span>
             </div>
+            <div>
+              <span className="text-on-surface-variant font-semibold">Attached Evidence:</span>{" "}
+              <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                {evidenceItems.length} photograph{evidenceItems.length !== 1 ? "s" : ""} (Forensic &amp; Geotag Ready)
+              </span>
+            </div>
           </div>
 
           <div className="p-3 rounded-lg bg-surface-container text-[11px] text-on-surface-variant">
@@ -655,15 +995,22 @@ export default function SubmitGrievancePage() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <button
-              onClick={() => router.push(`/authority/grievances/${submittedData.grievanceNumber}`)}
+              onClick={() => router.push(`/citizen/grievances/${submittedData.grievanceNumber}`)}
               className="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md transition-colors flex items-center justify-center gap-2"
             >
-              <span>Track Ticket in Live Triage Queue</span>
+              <span>Track Resolution Progress</span>
               <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
             </button>
             <button
+              onClick={() => router.push("/citizen/dashboard")}
+              className="w-full sm:w-auto px-5 py-3 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-[16px]">dashboard</span>
+              <span>My Citizen Dashboard</span>
+            </button>
+            <button
               onClick={handleResetForm}
-              className="w-full sm:w-auto px-5 py-3 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold transition-colors"
+              className="w-full sm:w-auto px-5 py-3 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface-variant text-xs font-medium transition-colors"
             >
               File Another Report
             </button>

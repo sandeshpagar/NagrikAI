@@ -101,7 +101,7 @@ export function Sidebar({ onCloseMobile, isDrawer = false }: SidebarProps = {}) 
                   className={navItemClass("/citizen/grievances/GRV-2026-1042")}
                 >
                   <span className="material-symbols-outlined text-[20px]">inbox</span>
-                  <span>Track Case GRV-1042</span>
+                  <span>Track Case</span>
                 </Link>
               </>
             ) : (
