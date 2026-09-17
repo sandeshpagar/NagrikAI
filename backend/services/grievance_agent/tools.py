@@ -241,6 +241,24 @@ class GrievanceAgentTools:
             actor_type="AI_AGENT",
             actor_name="NagrikAI Grievance Agent"
         )
+        try:
+            from services.notification_service import (
+                citizen_notification_service,
+                CreateCitizenNotificationRequest,
+                NotificationEventType
+            )
+            citizen_notification_service.create_notification(
+                CreateCitizenNotificationRequest(
+                    grievance_id=grievance_id,
+                    event_type=NotificationEventType.STATUS_CHANGE,
+                    title=f"Update on Grievance #{grievance_id}",
+                    message=message,
+                    metadata={"channel": channel}
+                )
+            )
+        except Exception as e:
+            logger.warning(f"Could not link to citizen notification service: {e}")
+
         return {
             "success": True,
             "channel": channel,
@@ -263,6 +281,24 @@ class GrievanceAgentTools:
             actor_type="AI_AGENT",
             actor_name="NagrikAI Grievance Agent"
         )
+        try:
+            from services.notification_service import (
+                citizen_notification_service,
+                CreateCitizenNotificationRequest,
+                NotificationEventType
+            )
+            citizen_notification_service.create_notification(
+                CreateCitizenNotificationRequest(
+                    grievance_id=grievance_id,
+                    event_type=NotificationEventType.EVIDENCE_REQUEST,
+                    title="Additional Evidence Requested",
+                    message=f"Please provide supplementary photos or details: {reason}",
+                    metadata={"reason": reason}
+                )
+            )
+        except Exception as e:
+            logger.warning(f"Could not link to citizen notification service: {e}")
+
         return {
             "success": True,
             "reason": reason,

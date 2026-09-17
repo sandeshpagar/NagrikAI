@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useGrievances } from "@/context/GrievanceContext";
 import { useAuth } from "@/context/AuthContext";
 import { Grievance } from "@/lib/types";
+import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 
 // Seed historical resolved cases for demonstration of citizen feedback & before/after audit
 const HISTORICAL_RESOLVED_GRIEVANCES = [
@@ -43,6 +44,7 @@ export default function CitizenDashboardPage() {
     notifications: contextNotifications,
     unreadCount,
     markNotificationRead,
+    markAllNotificationsRead,
   } = useGrievances();
 
   const [activeTab, setActiveTab] = useState<"ACTIVE" | "UPDATES" | "RESOLVED" | "NOTIFICATIONS">("ACTIVE");
@@ -360,7 +362,7 @@ export default function CitizenDashboardPage() {
           <span className="material-symbols-outlined text-[18px]">notifications</span>
           <span>Notifications</span>
           {unreadCount > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-bold">
+            <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-bold">
               {unreadCount}
             </span>
           )}
@@ -716,71 +718,18 @@ export default function CitizenDashboardPage() {
 
       {/* TAB 4: NOTIFICATIONS HUB */}
       {activeTab === "NOTIFICATIONS" && (
-        <section className="bg-surface-container-lowest rounded-2xl p-6 shadow-card border border-surface-container space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-surface-container">
-            <div>
-              <h2 className="text-base font-bold text-on-surface flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-[22px]">notifications</span>
-                <span>Civic Notifications &amp; Alerts</span>
-              </h2>
-              <p className="text-xs text-on-surface-variant">
-                All milestone announcements regarding your reported tickets
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                contextNotifications.forEach((n) => markNotificationRead(n.id));
-                showToast("All notifications marked as read.");
-              }}
-              className="text-xs text-primary hover:underline font-bold"
-            >
-              Mark All Read
-            </button>
-          </div>
-
-          <div className="space-y-2.5 pt-2">
-            {contextNotifications.map((notif) => (
-              <div
-                key={notif.id}
-                onClick={() => markNotificationRead(notif.id)}
-                className={`p-3.5 rounded-xl border flex items-start gap-3 transition-colors cursor-pointer ${
-                  notif.read
-                    ? "bg-surface-container-low border-surface-container opacity-85"
-                    : "bg-blue-50/70 border-blue-200"
-                }`}
-              >
-                <div
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                    notif.type === "alert"
-                      ? "bg-rose-100 text-rose-800"
-                      : notif.type === "success"
-                      ? "bg-emerald-100 text-emerald-800"
-                      : notif.type === "warning"
-                      ? "bg-amber-100 text-amber-800"
-                      : "bg-blue-100 text-blue-800"
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[18px]">
-                    {notif.type === "alert"
-                      ? "warning"
-                      : notif.type === "success"
-                      ? "check_circle"
-                      : notif.type === "warning"
-                      ? "schedule"
-                      : "info"}
-                  </span>
-                </div>
-
-                <div className="flex-1 space-y-0.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-on-surface">{notif.title}</span>
-                    <span className="text-[11px] text-on-surface-variant font-mono">{notif.time}</span>
-                  </div>
-                  <p className="text-xs text-on-surface-variant leading-relaxed">{notif.message}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+        <section className="space-y-4">
+          <NotificationCenter
+            role="CITIZEN"
+            notifications={contextNotifications as any}
+            unreadCount={unreadCount}
+            onMarkRead={(id) => markNotificationRead(id)}
+            onMarkAllRead={() => {
+              markAllNotificationsRead();
+              showToast("All notifications marked as read.");
+            }}
+            className="shadow-sm border border-surface-container"
+          />
         </section>
       )}
 

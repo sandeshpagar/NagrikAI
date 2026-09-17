@@ -5,14 +5,20 @@ import { Grievance, GrievanceStatus, AuditLogEntry } from "@/lib/types";
 import { MOCK_GRIEVANCES, INITIAL_AUDIT_LOGS, INITIAL_GRIEVANCE_1042 } from "@/lib/mock-data";
 import { getGrievancesFromDb, getAuditLogsFromDb, insertGrievanceToDb } from "@/lib/supabase/db";
 
-interface NotificationItem {
+export interface NotificationItem {
   id: string;
+  grievance_id?: string;
+  grievanceNumber?: string;
+  citizen_id?: string;
   title: string;
   message: string;
-  time: string;
-  read: boolean;
-  grievanceNumber?: string;
+  time?: string;
+  created_at?: string;
+  event_type?: string;
   type: "info" | "warning" | "success" | "alert";
+  channel?: string;
+  read: boolean;
+  metadata?: any;
 }
 
 interface GrievanceContextType {
@@ -22,6 +28,8 @@ interface GrievanceContextType {
   notifications: NotificationItem[];
   unreadCount: number;
   markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
+  addNotification: (item: Partial<NotificationItem>) => void;
   getGrievanceByNumber: (num: string) => Grievance | undefined;
   acceptRecommendation: (grievanceId: string) => void;
   modifyRecommendation: (grievanceId: string, customAction: string, reason: string) => void;
@@ -35,41 +43,166 @@ interface GrievanceContextType {
 
 const GrievanceContext = createContext<GrievanceContextType | undefined>(undefined);
 
+
 export function GrievanceProvider({ children }: { children: React.ReactNode }) {
   const [grievances, setGrievances] = useState<Grievance[]>(MOCK_GRIEVANCES);
   const [activeGrievance, setActiveGrievance] = useState<Grievance>(INITIAL_GRIEVANCE_1042);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(INITIAL_AUDIT_LOGS);
   const [notifications, setNotifications] = useState<NotificationItem[]>([
     {
-      id: "notif-1",
-      title: "New High-Priority Case Assigned",
-      message: "GRV-2026-1042 on Sinhagad Road Junction requires immediate triage.",
-      time: "10m ago",
-      read: false,
+      id: "notif-seed-08",
+      grievance_id: "GRV-2026-1042",
       grievanceNumber: "GRV-2026-1042",
+      citizen_id: "citizen-001",
+      title: "SLA Escalation Triggered",
+      message: "Grievance escalated to Tier 2 (Superintending Engineer Er. Sunita Deshpande) for expedited executive oversight.",
+      event_type: "ESCALATION",
       type: "alert",
-    },
-    {
-      id: "notif-2",
-      title: "Evidence Authenticated by AI",
-      message: "Exif and metadata validated with 98.4% match for GRV-2026-1042.",
-      time: "25m ago",
+      channel: "ALL",
       read: false,
-      grievanceNumber: "GRV-2026-1042",
-      type: "success",
+      created_at: "2026-09-17T17:35:00.000Z",
+      time: "10m ago",
+      metadata: { tier: 2, authority: "Er. Sunita Deshpande" }
     },
     {
-      id: "notif-3",
-      title: "SLA Warning (Level 1 approaching)",
-      message: "Kothrud water pipeline grievance GRV-2026-1040 is nearing deadline.",
-      time: "1h ago",
-      read: true,
-      grievanceNumber: "GRV-2026-1040",
-      type: "warning",
+      id: "notif-seed-07",
+      grievance_id: "GRV-2026-1042",
+      grievanceNumber: "GRV-2026-1042",
+      citizen_id: "citizen-001",
+      title: "Field Inspection & Action Scheduled",
+      message: "Ward 12 rapid road repair squad dispatched. Cold-mix asphalt patching committed for 18 Sep 2026.",
+      event_type: "EXPECTED_ACTION",
+      type: "info",
+      channel: "WHATSAPP",
+      read: false,
+      created_at: "2026-09-17T17:00:00.000Z",
+      time: "45m ago",
+      metadata: { scheduled_date: "2026-09-18T10:00:00Z" }
     },
+    {
+      id: "notif-seed-06",
+      grievance_id: "GRV-2026-1042",
+      grievanceNumber: "GRV-2026-1042",
+      citizen_id: "citizen-001",
+      title: "Status Updated to In Progress",
+      message: "Municipal civil engineer acknowledged the complaint and accepted the AI recommended standard operating procedure.",
+      event_type: "STATUS_CHANGE",
+      type: "info",
+      channel: "IN_APP",
+      read: false,
+      created_at: "2026-09-17T15:45:00.000Z",
+      time: "2h ago",
+      metadata: { new_status: "IN_PROGRESS" }
+    },
+    {
+      id: "notif-seed-05",
+      grievance_id: "GRV-2026-1042",
+      grievanceNumber: "GRV-2026-1042",
+      citizen_id: "citizen-001",
+      title: "Evidence Request: Additional Landmarks",
+      message: "AI verification engine requested clear intersection photos to pinpoint storm drain blockage near Sinhagad Road.",
+      event_type: "EVIDENCE_REQUEST",
+      type: "warning",
+      channel: "SMS",
+      read: true,
+      created_at: "2026-09-17T14:15:00.000Z",
+      time: "3h ago",
+      metadata: { requested_item: "Intersection landmark photo" }
+    },
+    {
+      id: "notif-seed-04",
+      grievance_id: "GRV-2026-1042",
+      grievanceNumber: "GRV-2026-1042",
+      citizen_id: "citizen-001",
+      title: "Statutory RTSA Official Acknowledgement",
+      message: "Formal receipt acknowledged under Maharashtra RTSA 2015. 72-hour statutory SLA clock commenced.",
+      event_type: "ACKNOWLEDGEMENT",
+      type: "success",
+      channel: "SMS",
+      read: true,
+      created_at: "2026-09-17T12:05:00.000Z",
+      time: "5h ago",
+      metadata: { sla_hours: 72 }
+    },
+    {
+      id: "notif-seed-03",
+      grievance_id: "GRV-2026-1042",
+      grievanceNumber: "GRV-2026-1042",
+      citizen_id: "citizen-001",
+      title: "Authority Mapped: PMC Ward 12",
+      message: "Assigned to Er. Rajesh Sharma (Executive Engineer, PMC Road Maintenance Division).",
+      event_type: "ASSIGNMENT",
+      type: "info",
+      channel: "ALL",
+      read: true,
+      created_at: "2026-09-17T11:55:00.000Z",
+      time: "6h ago",
+      metadata: { officer: "Er. Rajesh Sharma", ward: "Ward 12" }
+    },
+    {
+      id: "notif-seed-02",
+      grievance_id: "GRV-2026-1042",
+      grievanceNumber: "GRV-2026-1042",
+      citizen_id: "citizen-001",
+      title: "Grievance Lodged Successfully",
+      message: "Case GRV-2026-1042 recorded with 2 geotagged photos and DigiLocker Aadhaar verification.",
+      event_type: "SUBMISSION",
+      type: "success",
+      channel: "ALL",
+      read: true,
+      created_at: "2026-09-17T10:32:00.000Z",
+      time: "7h ago",
+      metadata: { tracking_id: "GRV-2026-1042" }
+    },
+    {
+      id: "notif-seed-01",
+      grievance_id: "GRV-2026-1038",
+      grievanceNumber: "GRV-2026-1038",
+      citizen_id: "citizen-001",
+      title: "Case Resolved: Streetlight Restored",
+      message: "Work order completed. Luminaires replaced and verified by Ward electrical supervisor. Please rate your service.",
+      event_type: "RESOLUTION",
+      type: "success",
+      channel: "SMS",
+      read: true,
+      created_at: "2026-09-16T18:20:00.000Z",
+      time: "1d ago",
+      metadata: { rating_eligible: true }
+    }
   ]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const markNotificationRead = (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+    fetch(`/api/notifications/citizen/${id}/read`, { method: "POST" }).catch(() => {});
+  };
+
+  const markAllNotificationsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    fetch(`/api/notifications/citizen/read-all`, { method: "POST" }).catch(() => {});
+  };
+
+  const addNotification = (item: Partial<NotificationItem>) => {
+    const newItem: NotificationItem = {
+      id: item.id || `notif-${Date.now()}`,
+      grievance_id: item.grievance_id || item.grievanceNumber || "GRV-2026-1042",
+      grievanceNumber: item.grievanceNumber || item.grievance_id || "GRV-2026-1042",
+      citizen_id: item.citizen_id || "citizen-001",
+      title: item.title || "Grievance Update",
+      message: item.message || "New operational update.",
+      event_type: item.event_type || "STATUS_CHANGE",
+      type: item.type || "info",
+      channel: item.channel || "IN_APP",
+      read: false,
+      created_at: item.created_at || new Date().toISOString(),
+      time: item.time || "Just now",
+      metadata: item.metadata || {},
+    };
+    setNotifications((prev) => [newItem, ...prev]);
+  };
 
   // Hydrate from live Supabase tables if configured and available
   useEffect(() => {
@@ -93,12 +226,6 @@ export function GrievanceProvider({ children }: { children: React.ReactNode }) {
     };
     hydrateFromSupabase();
   }, []);
-
-  const markNotificationRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
-  };
 
   const getGrievanceByNumber = (num: string) => {
     return grievances.find(
@@ -281,6 +408,15 @@ export function GrievanceProvider({ children }: { children: React.ReactNode }) {
       action: "STATUS_UPDATED",
       details: `Status set to ${newStatus}. Notes: ${notes || "None"}`,
     });
+
+    addNotification({
+      grievance_id: grievanceId,
+      grievanceNumber: grievanceId,
+      title: newStatus === "RESOLVED" ? "Case Resolved" : `Status Changed: ${newStatus.replace("_", " ")}`,
+      message: notes || `Case ${grievanceId} updated to ${newStatus}. Field action logged.`,
+      event_type: newStatus === "RESOLVED" ? "RESOLUTION" : (newStatus === "ACTION_SCHEDULED" ? "EXPECTED_ACTION" : "STATUS_CHANGE"),
+      type: newStatus === "RESOLVED" ? "success" : "info",
+    });
   };
 
   const postAuthorityDirective = (grievanceId: string, directiveText: string) => {
@@ -395,6 +531,15 @@ export function GrievanceProvider({ children }: { children: React.ReactNode }) {
       action: "GRIEVANCE_ESCALATED",
       details: `Escalation triggered: ${reason}`,
     });
+
+    addNotification({
+      grievance_id: grievanceId,
+      grievanceNumber: grievanceId,
+      title: "SLA Escalation Triggered",
+      message: `Statutory escalation to Tier 2: ${reason}. Case assigned to Zonal Superintending Engineer.`,
+      event_type: "ESCALATION",
+      type: "alert",
+    });
   };
 
   const submitNewGrievance = (data: Partial<Grievance>): Grievance => {
@@ -494,6 +639,15 @@ export function GrievanceProvider({ children }: { children: React.ReactNode }) {
       details: `New grievance submitted: ${newGrievance.title}`,
     });
 
+    addNotification({
+      grievance_id: newGrievance.grievanceNumber,
+      grievanceNumber: newGrievance.grievanceNumber,
+      title: `Grievance Lodged: ${newGrievance.grievanceNumber}`,
+      message: `Your grievance "${newGrievance.title}" was submitted successfully and queued for AI analysis.`,
+      event_type: "SUBMISSION",
+      type: "success",
+    });
+
     return newGrievance;
   };
 
@@ -506,6 +660,8 @@ export function GrievanceProvider({ children }: { children: React.ReactNode }) {
         notifications,
         unreadCount,
         markNotificationRead,
+        markAllNotificationsRead,
+        addNotification,
         getGrievanceByNumber,
         acceptRecommendation,
         modifyRecommendation,

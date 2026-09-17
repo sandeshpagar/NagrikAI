@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useGrievances } from "@/context/GrievanceContext";
 import { Role } from "@/lib/types";
+import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 
 interface NavbarProps {
   onToggleSidebar?: () => void;
@@ -12,7 +13,7 @@ interface NavbarProps {
 
 export function Navbar({ onToggleSidebar }: NavbarProps = {}) {
   const { role, currentUser, switchRole, logout, isAuthenticated } = useAuth();
-  const { notifications, unreadCount, markNotificationRead } = useGrievances();
+  const { notifications, unreadCount, markNotificationRead, markAllNotificationsRead } = useGrievances();
   const [showRoleMenu, setShowRoleMenu] = useState(false);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -138,32 +139,18 @@ export function Navbar({ onToggleSidebar }: NavbarProps = {}) {
                   )}
                 </button>
 
-                {/* Notification Dropdown */}
+                {/* Notification Dropdown / Center */}
                 {showNotifMenu && (
-                  <div className="absolute right-0 mt-2 w-80 bg-surface-container-lowest rounded-xl shadow-elevated border border-surface-container p-2 z-50 animate-in fade-in">
-                    <div className="flex items-center justify-between p-2 border-b border-surface-container">
-                      <span className="font-semibold text-xs text-on-surface">Notifications</span>
-                      <span className="text-[11px] text-primary font-medium">{unreadCount} unread</span>
-                    </div>
-                    <div className="max-h-64 overflow-y-auto divide-y divide-surface-container">
-                      {notifications.map((n) => (
-                        <div
-                          key={n.id}
-                          onClick={() => markNotificationRead(n.id)}
-                          className={`p-2.5 hover:bg-surface-container-low cursor-pointer transition-colors ${
-                            !n.read ? "bg-surface-container-low/50" : ""
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium text-xs text-on-surface">{n.title}</span>
-                            <span className="text-[10px] text-on-surface-variant">{n.time}</span>
-                          </div>
-                          <p className="text-[11px] text-on-surface-variant mt-0.5 line-clamp-2">
-                            {n.message}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="absolute right-0 mt-2 w-80 sm:w-[420px] z-50 animate-in fade-in slide-in-from-top-2">
+                    <NotificationCenter
+                      role={role}
+                      notifications={notifications as any}
+                      unreadCount={unreadCount}
+                      onMarkRead={(id) => markNotificationRead(id)}
+                      onMarkAllRead={() => markAllNotificationsRead()}
+                      onClose={() => setShowNotifMenu(false)}
+                      className="shadow-2xl border border-slate-200"
+                    />
                   </div>
                 )}
               </div>
