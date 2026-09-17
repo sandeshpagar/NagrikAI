@@ -479,10 +479,12 @@ export function GrievanceProvider({ children }: { children: React.ReactNode }) {
 
     setGrievances((prev) => [newGrievance, ...prev]);
 
-    // Asynchronously persist to Supabase if live DB is connected
-    insertGrievanceToDb(newGrievance).catch((err) => {
-      console.warn("Could not persist grievance to remote Supabase DB:", err);
-    });
+    // Asynchronously persist to Supabase if live DB is connected and not already saved via API
+    if (!(data as any).alreadyPersisted) {
+      insertGrievanceToDb(newGrievance).catch((err) => {
+        console.warn("Could not persist grievance to remote Supabase DB:", err);
+      });
+    }
 
     addAuditLog({
       grievanceNumber: newGrievance.grievanceNumber,

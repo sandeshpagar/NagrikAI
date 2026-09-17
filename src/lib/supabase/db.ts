@@ -146,15 +146,20 @@ export async function insertGrievanceToDb(grievance: Partial<Grievance>): Promis
   try {
     const { data, error } = await supabase.from("grievances").insert({
       grievance_number: grievance.grievanceNumber || `GRV-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+      citizen_id: "44444444-0000-0000-0000-000000000001",
+      department_id: "11111111-0000-0000-0000-000000000001",
+      jurisdiction_id: "22222222-0000-0000-0000-000000000002",
       title: grievance.title || "Civic Grievance",
       description: grievance.description || "",
       original_text_log: grievance.originalTextLog || grievance.description || "",
-      category: grievance.category || "Public Safety",
+      category: grievance.category || "Road Infrastructure & Public Safety",
       priority: grievance.priority || "MEDIUM",
       status: grievance.status || "SUBMITTED",
-      latitude: grievance.location?.latitude || null,
-      longitude: grievance.location?.longitude || null,
-      address: grievance.location?.address || null,
+      ledger_hash: grievance.ledgerHash || `#PMC-2026-SHA256-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+      latitude: grievance.location?.latitude || 18.4965,
+      longitude: grievance.location?.longitude || 73.8312,
+      address: grievance.location?.address || "Sinhagad Road, Ward 12, Pune",
+      expected_resolution_at: grievance.sla?.deadlineIso || new Date(Date.now() + 48 * 3600000).toISOString(),
     }).select().single();
 
     if (error) {
