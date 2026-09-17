@@ -8,6 +8,7 @@ from routers.evidence import router as evidence_router
 from routers.analysis import router as analysis_router
 from routers.similarity import router as similarity_router
 from routers.authorities import router as authorities_router
+from routers.notifications import router as notifications_router
 from services.supabase_client import get_supabase
 
 # Configure logging
@@ -45,6 +46,8 @@ app.include_router(similarity_router, prefix=settings.API_V1_STR)
 app.include_router(similarity_router)
 app.include_router(authorities_router, prefix=settings.API_V1_STR)
 app.include_router(authorities_router)
+app.include_router(notifications_router, prefix=settings.API_V1_STR)
+app.include_router(notifications_router)
 
 @app.get("/health", tags=["System"])
 async def health_check():

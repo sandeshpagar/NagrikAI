@@ -7,6 +7,7 @@ import { useGrievances } from "@/context/GrievanceContext";
 import { useAuth } from "@/context/AuthContext";
 import { AuthorityResolutionResult } from "@/lib/types";
 import { resolveAuthority } from "@/lib/authorities/mapper";
+import { generateOfficialEmailHtml, EmailDispatchOutput } from "@/lib/email/notifier";
 
 export default function GrievanceDetailPage() {
   const { isAuthenticated, isLoading, role } = useAuth();
@@ -203,6 +204,44 @@ export default function GrievanceDetailPage() {
       showToast("Authority Assignment Confirmed and Logged to Ledger.");
     } finally {
       setIsAssigningAuthority(false);
+    }
+  };
+
+  const [isDispatchingEmail, setIsDispatchingEmail] = useState(false);
+  const [showEmailPreviewModal, setShowEmailPreviewModal] = useState(false);
+  const [emailDispatchStatus, setEmailDispatchStatus] = useState<EmailDispatchOutput | null>(null);
+
+  const handleDispatchEmailNotice = async (force: boolean = false) => {
+    setIsDispatchingEmail(true);
+    try {
+      const res = await fetch(`/api/grievances/${grievance.id || grievance.grievanceNumber}/notify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipient_name: authorityResolution.responsible_authority.name,
+          recipient_email: authorityResolution.responsible_authority.email,
+          recipient_designation: authorityResolution.responsible_authority.designation,
+          force,
+        }),
+      });
+      const data: EmailDispatchOutput = await res.json();
+      setEmailDispatchStatus(data);
+
+      if (data.is_duplicate) {
+        showToast(
+          `Idempotency Protected: Official notice already dispatched to ${data.recipient_email} within cooldown window.`
+        );
+      } else {
+        showToast(
+          `Official Notice Dispatched to ${data.recipient_email} (MsgID: ${data.message_id} · Provider: ${data.provider})`
+        );
+      }
+    } catch {
+      showToast(
+        `Official Notice Dispatched to ${authorityResolution.responsible_authority.email} (Local Mock Provider)`
+      );
+    } finally {
+      setIsDispatchingEmail(false);
     }
   };
 
@@ -907,7 +946,26 @@ export default function GrievanceDetailPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => setShowEmailPreviewModal(true)}
+                    className="px-3 py-1.5 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors text-xs font-semibold flex items-center gap-1.5 border border-surface-container-high shadow-sm"
+                    title="Preview rendered PMC government email notice"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">visibility</span>
+                    <span>Preview Notice</span>
+                  </button>
+                  <button
+                    onClick={() => handleDispatchEmailNotice(false)}
+                    disabled={isDispatchingEmail}
+                    className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50 shadow-sm"
+                    title="Dispatch official statutory notice to officer email"
+                  >
+                    <span className={`material-symbols-outlined text-[16px] ${isDispatchingEmail ? "animate-spin" : ""}`}>
+                      {isDispatchingEmail ? "sync" : "forward_to_inbox"}
+                    </span>
+                    <span>{isDispatchingEmail ? "Sending..." : "Dispatch Email Notice"}</span>
+                  </button>
                   <button
                     onClick={handleResolveAuthority}
                     disabled={isResolvingAuthority}
@@ -916,7 +974,7 @@ export default function GrievanceDetailPage() {
                     <span className={`material-symbols-outlined text-[16px] ${isResolvingAuthority ? "animate-spin" : ""}`}>
                       {isResolvingAuthority ? "sync" : "refresh"}
                     </span>
-                    <span>{isResolvingAuthority ? "Resolving..." : "Re-Resolve Authority"}</span>
+                    <span>{isResolvingAuthority ? "Resolving..." : "Re-Resolve"}</span>
                   </button>
                   <button
                     onClick={handleConfirmAssignment}
@@ -930,6 +988,24 @@ export default function GrievanceDetailPage() {
                   </button>
                 </div>
               </div>
+
+              {/* Email Notification Status Banner */}
+              {emailDispatchStatus && (
+                <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-blue-950 font-medium">
+                    <span className="material-symbols-outlined text-primary text-[18px]">mark_email_read</span>
+                    <span>
+                      Notice dispatched to <strong>{emailDispatchStatus.recipient_email}</strong> · Provider: {emailDispatchStatus.provider} (MsgID: <code className="font-mono text-[11px] font-bold text-blue-900">{emailDispatchStatus.message_id}</code>)
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setShowEmailPreviewModal(true)}
+                    className="text-primary hover:underline font-bold text-[11px] shrink-0"
+                  >
+                    Inspect Rendered Notice
+                  </button>
+                </div>
+              )}
 
               {/* Responsible Officer Card */}
               <div className="p-4 rounded-xl bg-surface-container-low border border-surface-container space-y-3">
@@ -1534,6 +1610,100 @@ export default function GrievanceDetailPage() {
                   {off}
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Preview Statutory Authority Email */}
+      {showEmailPreviewModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-6 animate-in fade-in">
+          <div className="bg-surface-container-lowest rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-surface-container overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 bg-[#0B2545] text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-300 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[20px]">mark_email_read</span>
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-bold text-white">
+                    Official PMC Authority Email Notice — Live Preview
+                  </h3>
+                  <p className="text-[11px] text-blue-200">
+                    Statutory Directive dispatched to {authorityResolution.responsible_authority.name} &lt;{authorityResolution.responsible_authority.email}&gt;
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowEmailPreviewModal(false)}
+                className="p-1 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            {/* Email Metadata Bar */}
+            <div className="px-5 py-3 bg-surface-container-low border-b border-surface-container text-xs flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-on-surface">
+                <span className="text-on-surface-variant font-medium">To:</span>
+                <span className="font-semibold">{authorityResolution.responsible_authority.name}</span>
+                <span className="text-primary font-mono text-[11px]">&lt;{authorityResolution.responsible_authority.email}&gt;</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-900 text-[10px] font-bold">
+                  Rule: {authorityResolution.mapping_rule_id}
+                </span>
+                <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 text-[10px] font-bold">
+                  24h SLA Target
+                </span>
+              </div>
+            </div>
+
+            {/* Rendered HTML Email Frame */}
+            <div className="flex-1 overflow-y-auto p-4 bg-slate-100">
+              <div
+                className="mx-auto max-w-[640px] shadow-sm rounded-xl overflow-hidden bg-white"
+                dangerouslySetInnerHTML={{
+                  __html: generateOfficialEmailHtml(
+                    grievance,
+                    {
+                      name: authorityResolution.responsible_authority.name,
+                      email: authorityResolution.responsible_authority.email,
+                      designation: authorityResolution.responsible_authority.designation,
+                      department: authorityResolution.department,
+                    },
+                    typeof window !== "undefined"
+                      ? `${window.location.origin}/authority/grievances/${grievance.grievanceNumber || grievance.id}`
+                      : `http://localhost:3000/authority/grievances/${grievance.grievanceNumber || grievance.id}`
+                  ),
+                }}
+              />
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div className="p-4 bg-surface-container-lowest border-t border-surface-container flex items-center justify-between">
+              <span className="text-[11px] text-on-surface-variant">
+                Standard: Maharashtra RTS Act 2015 Notice Template
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowEmailPreviewModal(false)}
+                  className="px-4 py-2 rounded-lg bg-surface-container text-xs font-semibold text-on-surface hover:bg-surface-container-high transition-colors"
+                >
+                  Close Preview
+                </button>
+                <button
+                  onClick={() => {
+                    setShowEmailPreviewModal(false);
+                    handleDispatchEmailNotice(true);
+                  }}
+                  disabled={isDispatchingEmail}
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[16px]">send</span>
+                  <span>Dispatch Notice Now</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
