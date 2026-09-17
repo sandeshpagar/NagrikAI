@@ -8,6 +8,8 @@ import { useAuth } from "@/context/AuthContext";
 import { AuthorityResolutionResult } from "@/lib/types";
 import { resolveAuthority } from "@/lib/authorities/mapper";
 import { generateOfficialEmailHtml, EmailDispatchOutput } from "@/lib/email/notifier";
+import { AuthorityResponseWorkflow } from "@/components/authority/AuthorityResponseWorkflow";
+import { SlaCountdownBadge } from "@/components/sla/SlaCountdownBadge";
 
 const DEFAULT_AUDIT_LOGS = [
   {
@@ -79,6 +81,7 @@ export default function GrievanceDetailPage() {
     acceptRecommendation,
     modifyRecommendation,
     rejectRecommendation,
+    updateStatus,
     postAuthorityDirective,
     triggerCitizenUpdate,
     escalateGrievance,
@@ -876,6 +879,32 @@ export default function GrievanceDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* LEFT COLUMN: Citizen Complaint, Multimodal Verification, AI Synthesis & Interventions (7 cols) */}
           <div className="lg:col-span-7 flex flex-col gap-6">
+            {/* Phase 13 & 14: Statutory SLA Countdown & Official Authority Response Workflow */}
+            <SlaCountdownBadge
+              grievanceId={grievance.grievanceNumber || grievance.id}
+              showLadder={true}
+              allowManualEscalation={true}
+            />
+
+            <AuthorityResponseWorkflow
+              grievanceId={grievance.grievanceNumber || grievance.id}
+              currentStatus={grievance.status}
+              aiRecommendation={grievance.recommendation?.title || "Dispatch Ward 12 road maintenance rapid repair crew with cold-mix asphalt equipment."}
+              onResponseSubmitted={(result) => {
+                showToast(`Authority response registered! Status: ${result.new_status || "Updated"}`);
+                if (result.new_status && typeof updateStatus === "function") {
+                  try {
+                    updateStatus(grievance.id, result.new_status, result.validated_response?.applied_directive);
+                  } catch (statusErr) {
+                    console.warn("Status update hook notice:", statusErr);
+                  }
+                  if (dbGrievance) {
+                    setDbGrievance((prev: any) => prev ? { ...prev, status: result.new_status } : null);
+                  }
+                }
+              }}
+            />
+
             {/* 1. Citizen Original Submission Card */}
             <article className="bg-surface-container-lowest rounded-xl p-6 shadow-card border border-surface-container space-y-4">
               <header className="flex items-center justify-between pb-2 border-b border-surface-container">

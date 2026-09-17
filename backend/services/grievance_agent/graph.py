@@ -146,25 +146,36 @@ class GrievanceAgentRunner:
             directive = response_data["directive"]
             state["last_response"] = directive
             
-            # Use LLM provider to analyze authority directive
-            llm_analysis = self.llm.generate_json(
-                prompt=f"Grievance: {state.get('title')}. Authority directive: '{directive}'. "
-                       "Is this grievance RESOLVED, or is an ACTION_SCHEDULED?",
-                system_prompt="You are a civic compliance validator. Output JSON with fields: 'status' (RESOLVED or ACTION_SCHEDULED) and 'plain_language_summary'."
+            # Use statutory ResponseInterpreterService with ambiguity guardrail
+            from services.response_interpreter import response_interpreter_service, OfficerActionSubmission
+            validated = response_interpreter_service.interpret_submission(
+                OfficerActionSubmission(
+                    grievance_id=gid,
+                    directive_text=directive,
+                    status_intent=response_data.get("status")
+                ),
+                current_grievance={"title": state.get("title"), "status": state.get("status")}
             )
-            detected_status = llm_analysis.get("status", "ACTION_SCHEDULED")
 
-            if detected_status == "RESOLVED":
+            if validated.is_ambiguous:
+                logger.warning(f"Ambiguous directive for {gid}. Preserving status {state.get('status')}.")
+                state["logs"].append({
+                    "timestamp": now.isoformat(),
+                    "action": "AUTHORITY_RESPONSE_AMBIGUOUS",
+                    "details": f"Directive was non-committal: '{directive}'. Previous status maintained."
+                })
+                state["next_step"] = "NOTIFY_CITIZEN"
+            elif validated.status == "RESOLVED":
                 state["status"] = "RESOLVED"
                 state["next_step"] = "RESOLVE_AND_CLOSE"
             else:
-                state["status"] = "ACTION_SCHEDULED"
+                state["status"] = validated.status
                 state["next_step"] = "NOTIFY_CITIZEN"
 
             state["logs"].append({
                 "timestamp": now.isoformat(),
                 "action": "AUTHORITY_RESPONSE_PROCESSED",
-                "details": f"Authority directive validated: '{directive}'. Status: {state['status']}."
+                "details": f"Authority directive validated: '{directive}'. Status: {state['status']} (Ambiguous: {validated.is_ambiguous})."
             })
             return state
 
