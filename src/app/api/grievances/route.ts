@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { analyzeGrievanceText } from "@/lib/ai/analyzer";
+import { resolveAuthority } from "@/lib/authorities/mapper";
 
 export const dynamic = "force-dynamic";
 
@@ -321,6 +322,33 @@ export async function POST(req: NextRequest) {
       }).eq("id", grievanceId);
     } catch (aiErr: any) {
       console.warn("AI initial analysis note:", aiErr.message);
+    }
+
+    // Automatically resolve and assign authority on intake
+    try {
+      const resolvedAuth = resolveAuthority({
+        jurisdiction: grievanceRow.address,
+        category: grievanceRow.category,
+      });
+
+      await supabase.from("audit_logs").insert({
+        grievance_id: grievanceId,
+        grievance_number: uniqueNumber,
+        actor_type: "SYSTEM",
+        actor_name: "NagrikAI Authority Dispatch Engine",
+        action: "AUTHORITY_ASSIGNED",
+        details: `Statutory assignment to ${resolvedAuth.responsible_authority.name} (${resolvedAuth.responsible_authority.designation}) via rule ${resolvedAuth.mapping_rule_id}.${
+          resolvedAuth.is_fallback ? " [PMC APEX FALLBACK ENGAGED]" : ""
+        }`,
+        metadata: {
+          authority: resolvedAuth.responsible_authority,
+          escalation_chain: resolvedAuth.escalation_chain,
+          is_fallback: resolvedAuth.is_fallback,
+          mapping_rule_id: resolvedAuth.mapping_rule_id,
+        },
+      });
+    } catch (authErr: any) {
+      console.warn("Authority mapping initial dispatch note:", authErr.message);
     }
 
     // Insert immutable audit log into public.audit_logs

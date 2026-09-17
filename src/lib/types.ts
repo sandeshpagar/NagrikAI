@@ -182,3 +182,38 @@ export interface AuditLogEntry {
   action: string;
   details: string;
 }
+
+export interface AuthorityContact {
+  id: string;
+  name: string;
+  designation: string;
+  email: string;
+  phone: string;
+  office_address: string;
+  department_name?: string;
+  department_code?: string;
+  jurisdiction_name?: string;
+}
+
+export interface EscalationTierInfo {
+  tier: number;
+  role: "FIELD_OFFICER" | "DEPARTMENT_ADMIN" | "SYSTEM_ADMIN" | string;
+  name: string;
+  designation: string;
+  email: string;
+  phone: string;
+  trigger_condition: string;
+  sla_threshold_hours?: number;
+}
+
+export interface AuthorityResolutionResult {
+  jurisdiction: string;
+  category: string;
+  department: string;
+  responsible_authority: AuthorityContact;
+  escalation_chain: EscalationTierInfo[];
+  is_fallback: boolean;
+  mapping_rule_id: string;
+  resolution_timestamp: string;
+}
+
