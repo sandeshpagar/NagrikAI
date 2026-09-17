@@ -14,6 +14,7 @@ from routers.sla import router as sla_router
 from routers.escalations import router as escalations_router
 from routers.officer_response import router as officer_response_router
 from routers.analytics import router as analytics_router
+from routers.admin import router as admin_router
 from services.supabase_client import get_supabase
 from services.llm_provider.factory import get_llm_provider
 
@@ -54,6 +55,7 @@ all_routers = [
     escalations_router,
     officer_response_router,
     analytics_router,
+    admin_router,
 ]
 for r in all_routers:
     app.include_router(r, prefix=settings.API_V1_STR)
