@@ -1,13 +1,40 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useGrievances } from "@/context/GrievanceContext";
+import { useAuth } from "@/context/AuthContext";
 
 export default function AuthorityDashboardPage() {
+  const { isAuthenticated, isLoading, role } = useAuth();
+  const router = useRouter();
   const { grievances } = useGrievances();
   const [filterPriority, setFilterPriority] = useState<string>("ALL");
   const [searchFilter, setSearchFilter] = useState("");
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.replace("/auth/login?redirect=/authority/dashboard");
+      } else if (role === "CITIZEN") {
+        router.replace("/auth/unauthorized?role=CITIZEN&target=/authority/dashboard");
+      }
+    }
+  }, [isAuthenticated, isLoading, role, router]);
+
+  if (isLoading || !isAuthenticated || role === "CITIZEN") {
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-surface gap-3">
+        <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs text-on-surface-variant font-medium">
+          {!isAuthenticated
+            ? "Authentication required. Redirecting to login..."
+            : "Clearance check: Authority access only. Redirecting..."}
+        </span>
+      </div>
+    );
+  }
 
   const filteredGrievances = grievances.filter((g) => {
     const matchesPriority = filterPriority === "ALL" || g.priority === filterPriority;

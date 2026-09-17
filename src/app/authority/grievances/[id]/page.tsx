@@ -1,9 +1,25 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { useGrievances } from "@/context/GrievanceContext";
+import { useAuth } from "@/context/AuthContext";
 
 export default function GrievanceDetailPage() {
+  const { isAuthenticated, isLoading, role } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.replace(`/auth/login?redirect=${encodeURIComponent(pathname)}`);
+      } else if (role === "CITIZEN") {
+        router.replace(`/auth/unauthorized?role=CITIZEN&target=${encodeURIComponent(pathname)}`);
+      }
+    }
+  }, [isAuthenticated, isLoading, role, router, pathname]);
+
   const {
     activeGrievance: grievance,
     acceptRecommendation,
@@ -13,6 +29,19 @@ export default function GrievanceDetailPage() {
     triggerCitizenUpdate,
     escalateGrievance,
   } = useGrievances();
+
+  if (isLoading || !isAuthenticated || role === "CITIZEN") {
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-surface gap-3">
+        <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs text-on-surface-variant font-medium">
+          {!isAuthenticated
+            ? "Authentication required. Redirecting to login..."
+            : "Clearance check: Authority access only. Redirecting..."}
+        </span>
+      </div>
+    );
+  }
 
   const [showModifyModal, setShowModifyModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);

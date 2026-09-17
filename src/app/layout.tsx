@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { GrievanceProvider } from "@/context/GrievanceContext";
-import { Navbar } from "@/components/layout/Navbar";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { CitizenNav } from "@/components/layout/CitizenNav";
+import { AppLayoutShell } from "@/components/layout/AppLayoutShell";
 
 export const metadata: Metadata = {
   title: "NagrikAI · AI-Powered Civic Grievance & Resolution Platform",
@@ -34,21 +32,7 @@ export default function RootLayout({
       <body className="bg-surface text-on-surface antialiased h-full flex flex-col">
         <AuthProvider>
           <GrievanceProvider>
-            <Navbar />
-            <div className="flex-1 flex w-full">
-              {/* Desktop Persistent Sidebar */}
-              <div className="hidden lg:block">
-                <Sidebar />
-              </div>
-
-              {/* Main Content Area */}
-              <div className="flex-1 w-full lg:pl-72 pt-16 pb-20 lg:pb-8 transition-all">
-                {children}
-              </div>
-            </div>
-
-            {/* Mobile Bottom Navigation */}
-            <CitizenNav />
+            <AppLayoutShell>{children}</AppLayoutShell>
           </GrievanceProvider>
         </AuthProvider>
       </body>
