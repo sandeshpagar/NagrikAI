@@ -1,8 +1,36 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 export default function AnalyticsPage() {
+  const { isAuthenticated, isLoading, role } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.replace(`/auth/login?redirect=${encodeURIComponent(pathname)}`);
+      } else if (role === "CITIZEN") {
+        router.replace(`/auth/unauthorized?role=CITIZEN&target=${encodeURIComponent(pathname)}`);
+      }
+    }
+  }, [isAuthenticated, isLoading, role, router, pathname]);
+
+  if (isLoading || !isAuthenticated || role === "CITIZEN") {
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-surface gap-3">
+        <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs text-on-surface-variant font-medium">
+          {!isAuthenticated
+            ? "Authentication required. Redirecting to login..."
+            : "Clearance check: Authority access only. Redirecting..."}
+        </span>
+      </div>
+    );
+  }
   return (
     <main className="w-full min-h-screen bg-surface px-4 lg:px-8 py-6 max-w-7xl mx-auto space-y-6">
       <div>

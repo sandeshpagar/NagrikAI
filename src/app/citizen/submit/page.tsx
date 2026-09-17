@@ -35,6 +35,41 @@ export default function SubmitGrievancePage() {
     department: string;
   } | null>(null);
 
+  // Live Device Geolocation State
+  const [isLocating, setIsLocating] = useState(false);
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number; accuracy?: number }>({
+    latitude: 18.4965,
+    longitude: 73.8312,
+    accuracy: 4,
+  });
+  const [locationSource, setLocationSource] = useState<"MANUAL" | "DEVICE_GPS">("MANUAL");
+
+  const handleDetectLiveLocation = () => {
+    if (typeof window === "undefined" || !navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        setCoords({
+          latitude: parseFloat(latitude.toFixed(7)),
+          longitude: parseFloat(longitude.toFixed(7)),
+          accuracy: Math.round(accuracy),
+        });
+        setLocationSource("DEVICE_GPS");
+        setIsLocating(false);
+        setAddress(`Live Device GPS: ${latitude.toFixed(4)}° N, ${longitude.toFixed(4)}° E (On-Site Verification)`);
+      },
+      (err) => {
+        setIsLocating(false);
+        alert(`Location access denied or unavailable: ${err.message}. Using default municipal landmark.`);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
   const handleNextFromDescribe = () => {
     if (!description.trim()) {
       alert("Please enter a description of the issue.");
@@ -68,8 +103,10 @@ export default function SubmitGrievancePage() {
       priority: aiPreview?.priority || "HIGH",
       ward,
       address,
-      latitude: 18.4965,
-      longitude: 73.8312,
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      location_source: locationSource,
+      gps_accuracy: coords.accuracy,
       citizen_name: "Ramesh Kulkarni",
       citizen_phone: "+91 98220 54199",
       evidence_items: [
@@ -265,21 +302,57 @@ export default function SubmitGrievancePage() {
               />
             </div>
 
-            {/* Mock Map Preview Box */}
+            {/* Live GPS Detection Button */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900">
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-blue-700 dark:text-blue-400 text-[24px]">
+                  {locationSource === "DEVICE_GPS" ? "gps_fixed" : "my_location"}
+                </span>
+                <div>
+                  <div className="text-xs font-bold text-on-surface">
+                    {locationSource === "DEVICE_GPS" ? "Live Device GPS Active" : "Device Hardware Geolocation"}
+                  </div>
+                  <div className="text-[11px] text-on-surface-variant">
+                    {locationSource === "DEVICE_GPS"
+                      ? `Accuracy: ±${coords.accuracy}m · Geo-locked to device sensor`
+                      : "Allow browser access to verify on-site presence"}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleDetectLiveLocation}
+                disabled={isLocating}
+                className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm disabled:opacity-60 shrink-0"
+              >
+                <span className={`material-symbols-outlined text-[16px] ${isLocating ? "animate-spin" : ""}`}>
+                  {isLocating ? "sync" : "near_me"}
+                </span>
+                <span>{isLocating ? "Acquiring GPS..." : "Detect My Live Location"}</span>
+              </button>
+            </div>
+
+            {/* GPS Preview Box */}
             <div className="p-4 rounded-xl bg-surface-container-low border border-surface-container flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <span className="material-symbols-outlined text-secondary text-[24px]">
                   location_on
                 </span>
                 <div>
-                  <div className="text-xs font-bold text-on-surface">GPS Coordinates Captured</div>
+                  <div className="text-xs font-bold text-on-surface">
+                    {locationSource === "DEVICE_GPS" ? "Live Device Coordinates Locked" : "Default Municipal GPS Coordinates"}
+                  </div>
                   <div className="text-[11px] font-mono text-on-surface-variant">
-                    18.4965° N, 73.8312° E (Accuracy: &plusmn;4 meters)
+                    {coords.latitude}° N, {coords.longitude}° E {coords.accuracy ? `(Accuracy: ±${coords.accuracy}m)` : ""}
                   </div>
                 </div>
               </div>
-              <span className="px-2 py-1 rounded bg-secondary-container text-on-secondary-container text-[10px] font-bold">
-                GEO-LOCKED
+              <span className={`px-2 py-1 rounded text-[10px] font-bold ${
+                locationSource === "DEVICE_GPS"
+                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"
+                  : "bg-secondary-container text-on-secondary-container"
+              }`}>
+                {locationSource === "DEVICE_GPS" ? "DEVICE-GEO-LOCKED" : "MUNICIPAL PIN"}
               </span>
             </div>
           </div>

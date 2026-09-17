@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
 from routers.grievances import router as grievances_router
+from routers.evidence import router as evidence_router
 from services.supabase_client import get_supabase
 
 # Configure logging
@@ -30,9 +31,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include Grievance Routers under /api/v1 and root
+# Include Routers under /api/v1 and root
 app.include_router(grievances_router, prefix=settings.API_V1_STR)
 app.include_router(grievances_router)
+app.include_router(evidence_router, prefix=settings.API_V1_STR)
+app.include_router(evidence_router)
 
 @app.get("/health", tags=["System"])
 async def health_check():

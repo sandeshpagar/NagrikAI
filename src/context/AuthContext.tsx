@@ -224,7 +224,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const switchRole = (newRole: Role) => {
     setRole(newRole);
+    if (MOCK_USERS[newRole]) {
+      setCurrentUser(MOCK_USERS[newRole]);
+    }
     setCookie("nagrik_role", newRole, 7);
+    setCookie("nagrik_session", "active", 7);
+    setIsAuthenticated(true);
+    router.push(getDefaultRouteForRole(newRole));
   };
 
   return (

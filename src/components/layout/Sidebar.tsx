@@ -96,9 +96,9 @@ export function Sidebar({ onCloseMobile, isDrawer = false }: SidebarProps = {}) 
                   <span>Report New Issue</span>
                 </Link>
                 <Link
-                  href="/authority/grievances/GRV-2026-1042"
+                  href="/citizen/grievances/GRV-2026-1042"
                   onClick={handleLinkClick}
-                  className={navItemClass("/authority/grievances/GRV-2026-1042")}
+                  className={navItemClass("/citizen/grievances/GRV-2026-1042")}
                 >
                   <span className="material-symbols-outlined text-[20px]">inbox</span>
                   <span>Track Case GRV-1042</span>
@@ -153,9 +153,9 @@ export function Sidebar({ onCloseMobile, isDrawer = false }: SidebarProps = {}) 
                 <span>AI Follow-up Monitor</span>
               </Link>
               <Link
-                href="/authority/grievances/GRV-2026-1042#evidence"
+                href="/authority/evidence"
                 onClick={handleLinkClick}
-                className={navItemClass("/authority/grievances/GRV-2026-1042#evidence")}
+                className={navItemClass("/authority/evidence")}
               >
                 <span className="material-symbols-outlined text-[20px]">verified_user</span>
                 <span>Evidence Verification</span>
