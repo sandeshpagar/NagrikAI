@@ -1,0 +1,97 @@
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Production & Build outputs
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+
+# Environment & Secrets
+.env
+.env*.local
+.env.development
+.env.test
+.env.production
+.env.staging
+!.env.example
+*.pem
+*.key
+*.cert
+*.pfx
+*.p12
+credentials.json
+service-account*.json
+secrets/
+
+# Logs & Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.log
+
+# Testing & Coverage
+coverage/
+.nyc_output/
+*.lcov
+
+# TypeScript / ESLint cache
+.eslintcache
+.turbo/
+.swc/
+
+# Python / AI Backend (FastAPI / LangGraph)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDE & Editor Configs
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.sublime-workspace
+*.sublime-project
+*.swp
+*.swo
+*~
+
+# Temporary & Local Scratch Files
+*.tmp
+*.bak
+*.local
+scratch/
+
+# Internal Documentation & PRD Markdown Files
+*.md
+**/*.md
+
+# Ignore the .gitignore file itself
+.gitignore
+
