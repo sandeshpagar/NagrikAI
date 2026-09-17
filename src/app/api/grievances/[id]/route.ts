@@ -52,7 +52,26 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: `Grievance ${id} not found` }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, data });
+    // Also fetch associated audit logs for chain of custody
+    let auditLogs: any[] = [];
+    try {
+      const { data: logs } = await supabase
+        .from("audit_logs")
+        .select("*")
+        .or(`grievance_id.eq.${data.id},grievance_number.eq.${data.grievance_number}`)
+        .order("created_at", { ascending: false });
+      if (logs) auditLogs = logs;
+    } catch {
+      // audit query fallback
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...data,
+        audit_logs: auditLogs,
+      },
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
