@@ -9,7 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { isRouteAllowedForRole } from "@/lib/auth/roles";
 
 export function AppLayoutShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+  const pathname = usePathname() || "";
   const router = useRouter();
   const { isAuthenticated, isLoading, role } = useAuth();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);

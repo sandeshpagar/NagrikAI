@@ -7,9 +7,9 @@ import { useGrievances } from "@/context/GrievanceContext";
 import { useAuth } from "@/context/AuthContext";
 import { AuthorityResolutionResult } from "@/lib/types";
 import { resolveAuthority } from "@/lib/authorities/mapper";
-import { generateOfficialEmailHtml, EmailDispatchOutput } from "@/lib/email/notifier";
 import { AuthorityResponseWorkflow } from "@/components/authority/AuthorityResponseWorkflow";
 import { SlaCountdownBadge } from "@/components/sla/SlaCountdownBadge";
+import { generateOfficialEmailHtml, EmailDispatchOutput } from "@/lib/email/template";
 
 const DEFAULT_AUDIT_LOGS = [
   {
@@ -851,6 +851,13 @@ export default function GrievanceDetailPage() {
                 >
                   <span className="material-symbols-outlined text-[18px]">outgoing_mail</span>
                   <span>Trigger AI Citizen Update</span>
+                </button>
+                <button
+                  onClick={() => setShowEmailPreviewModal(true)}
+                  className="px-4 py-2 rounded-lg bg-indigo-50 text-indigo-900 hover:bg-indigo-100 text-xs font-bold flex items-center gap-2 transition-all border border-indigo-200 shadow-xs"
+                >
+                  <span className="material-symbols-outlined text-[18px]">mark_email_read</span>
+                  <span>Dispatch Statutory Email Notice</span>
                 </button>
               </div>
               <div className="flex items-center gap-2">

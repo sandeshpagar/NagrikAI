@@ -13,7 +13,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onCloseMobile, isDrawer = false }: SidebarProps = {}) {
-  const pathname = usePathname();
+  const pathname = usePathname() || "";
   const router = useRouter();
   const { role, currentUser, switchRole, isAuthenticated } = useAuth();
 

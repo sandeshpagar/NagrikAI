@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export function CitizenNav() {
-  const pathname = usePathname();
+  const pathname = usePathname() || "";
 
   const itemClass = (href: string) => {
     const isActive = pathname === href;

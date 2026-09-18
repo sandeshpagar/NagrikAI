@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useGrievances } from "@/context/GrievanceContext";
+import { EmailPreviewModal } from "@/components/email/EmailPreviewModal";
 
 interface EvidenceItem {
   id: string;
@@ -42,6 +43,11 @@ export default function SubmitGrievancePage() {
   const [ward, setWard] = useState("Ward 12 - Sinhagad Zone (PMC)");
   const [address, setAddress] = useState("Near Sinhagad Road Junction, Pune");
   const [voiceActive, setVoiceActive] = useState(false);
+  const [voiceLang, setVoiceLang] = useState<"mr-IN" | "hi-IN" | "en-IN">("mr-IN");
+  const [isListening, setIsListening] = useState(false);
+  const [speechError, setSpeechError] = useState<string | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -107,6 +113,113 @@ export default function SubmitGrievancePage() {
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
+  };
+
+  // Web Speech API initialization and voice handler
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (SpeechRecognition) {
+      try {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = voiceLang;
+
+        recognition.onstart = () => {
+          setIsListening(true);
+          setSpeechError(null);
+        };
+
+        recognition.onresult = (event: any) => {
+          let interimTranscript = "";
+          let finalTranscript = "";
+
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              finalTranscript += event.results[i][0].transcript;
+            } else {
+              interimTranscript += event.results[i][0].transcript;
+            }
+          }
+
+          const transcript = (finalTranscript || interimTranscript).trim();
+          if (transcript) {
+            setDescription((prev) => {
+              const prefix = prev && !prev.endsWith(" ") ? `${prev} ` : prev;
+              return `${prefix}${transcript}`;
+            });
+
+            if (!title) {
+              if (voiceLang === "mr-IN") {
+                setTitle("सिंहगड रस्त्यावरील नागरी समस्या");
+              } else if (voiceLang === "hi-IN") {
+                setTitle("सड़क मरम्मत एवं सुरक्षा शिकायत");
+              } else {
+                setTitle("Civic Infrastructure Grievance");
+              }
+            }
+          }
+        };
+
+        recognition.onerror = (event: any) => {
+          console.warn("Speech recognition notice:", event.error);
+          if (event.error === "not-allowed") {
+            setSpeechError("Microphone access restricted. Tap a sample prompt below for instant demo.");
+          }
+          setIsListening(false);
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+        };
+
+        recognitionRef.current = recognition;
+      } catch (err) {
+        console.warn("Speech recognition init error:", err);
+      }
+    }
+  }, [voiceLang, title]);
+
+  const toggleSpeechRecognition = () => {
+    if (!recognitionRef.current) {
+      handleApplySampleVoice(voiceLang);
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      try {
+        recognitionRef.current.lang = voiceLang;
+        recognitionRef.current.start();
+      } catch {
+        handleApplySampleVoice(voiceLang);
+      }
+    }
+  };
+
+  const handleApplySampleVoice = (lang: "mr-IN" | "hi-IN" | "en-IN") => {
+    setVoiceLang(lang);
+    if (lang === "mr-IN") {
+      setTitle("सिंहगड रस्त्यावर मोठा खड्डा आणि धोकादायक वीज केबल");
+      setDescription(
+        "सिंहगड रस्त्यावरील पेट्रोल पंपाजवळ सुमारे १.८ मीटर रुंदीचा मोठा खड्डा पडला आहे. खालील जिवंत विजेच्या तारा उघड्या पडल्या आहेत. काल रात्रीच्या पावसामुळे अनेक दुचाकी घसरल्या आहेत. कृपया तात्काळ दुरुस्ती पथक पाठवा."
+      );
+    } else if (lang === "hi-IN") {
+      setTitle("सिंहगढ़ रोड पर गहरा गड्ढा और खुली बिजली की तारें");
+      setDescription(
+        "सिंहगढ़ रोड पेट्रोल पंप के सामने 1.8 मीटर चौड़ा गहरा गड्ढा है। भूमिगत बिजली की तारें बाहर निकली हुई हैं। कल शाम बारिश में दोपहिया वाहन फिसल कर गिर गए। कृपया तत्काल मरम्मत टीम भेजें।"
+      );
+    } else {
+      setTitle("Severe Road Crater & Exposed Electrical Conduit");
+      setDescription(
+        "Deep crater spanning 1.8 meters across opposite Petrol Pump on Sinhagad Road. Exposing live underground electrical wiring casing. Multiple two-wheelers skidded during rain yesterday evening. Immediate asphalt squad required."
+      );
+    }
   };
 
   // Camera & File Processing Handlers
@@ -368,7 +481,7 @@ export default function SubmitGrievancePage() {
   return (
     <main className="w-full min-h-screen bg-surface px-4 sm:px-6 py-6 max-w-3xl mx-auto space-y-6">
       {/* Wizard Step Progress Header */}
-      {step <= 5 && (
+      {step !== 6 && (
         <div className="bg-surface-container-lowest p-4 sm:p-6 rounded-2xl border border-surface-container shadow-card">
           <div className="flex items-center justify-between text-xs font-bold text-on-surface-variant mb-3">
             <span className={step >= 1 ? "text-blue-700" : ""}>1. Describe</span>
@@ -408,33 +521,127 @@ export default function SubmitGrievancePage() {
               />
             </div>
 
-            <div>
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-on-surface">Detailed Complaint</label>
+            {/* Multilingual Voice Dictation Hub */}
+            <div className="p-3.5 rounded-2xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-on-surface flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[18px] text-blue-600">record_voice_over</span>
+                    <span>Multilingual Voice Dictation</span>
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-[10px] font-bold">
+                    Web Speech API
+                  </span>
+                </div>
+
+                {/* Language Switcher */}
+                <div className="flex items-center rounded-xl bg-surface-container-lowest p-0.5 border border-surface-container text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setVoiceLang("mr-IN")}
+                    className={
+                      voiceLang === "mr-IN"
+                        ? "px-2.5 py-1 rounded-lg transition-all text-[11px] bg-blue-600 text-white font-bold shadow-xs"
+                        : "px-2.5 py-1 rounded-lg transition-all text-[11px] text-on-surface-variant hover:text-on-surface"
+                    }
+                  >
+                    🇮🇳 मराठी
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVoiceLang("hi-IN")}
+                    className={
+                      voiceLang === "hi-IN"
+                        ? "px-2.5 py-1 rounded-lg transition-all text-[11px] bg-blue-600 text-white font-bold shadow-xs"
+                        : "px-2.5 py-1 rounded-lg transition-all text-[11px] text-on-surface-variant hover:text-on-surface"
+                    }
+                  >
+                    🇮🇳 हिन्दी
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVoiceLang("en-IN")}
+                    className={
+                      voiceLang === "en-IN"
+                        ? "px-2.5 py-1 rounded-lg transition-all text-[11px] bg-blue-600 text-white font-bold shadow-xs"
+                        : "px-2.5 py-1 rounded-lg transition-all text-[11px] text-on-surface-variant hover:text-on-surface"
+                    }
+                  >
+                    🌐 English
+                  </button>
+                </div>
+              </div>
+
+              {/* Main Record Action Bar */}
+              <div className="flex items-center justify-between gap-3 pt-1">
                 <button
                   type="button"
-                  onClick={() => {
-                    setVoiceActive(!voiceActive);
-                    if (!voiceActive) {
-                      setDescription(
-                        "Deep crater spanning 1.8 meters across opposite Petrol Pump on Sinhagad Road. Exposing live underground electrical wiring casing. Multiple two-wheelers skidded during rain yesterday evening."
-                      );
-                      setTitle("Severe Road Crater & Exposed Electrical Conduit");
-                    }
-                  }}
-                  className={`text-xs font-bold flex items-center gap-1 px-2.5 py-1 rounded-lg transition-colors ${
-                    voiceActive
-                      ? "bg-error text-white"
-                      : "bg-surface-container text-primary hover:bg-surface-container-high"
-                  }`}
+                  onClick={toggleSpeechRecognition}
+                  className={
+                    isListening
+                      ? "flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm bg-red-500 text-white animate-pulse ring-4 ring-red-400/40"
+                      : "flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm bg-blue-600 hover:bg-blue-700 text-white"
+                  }
                 >
-                  <span className="material-symbols-outlined text-[16px]">mic</span>
-                  <span>{voiceActive ? "Listening (Marathi)..." : "Voice Input (Marathi / Hindi)"}</span>
+                  <span className="material-symbols-outlined text-[18px]">
+                    {isListening ? "mic_off" : "mic"}
+                  </span>
+                  <span>
+                    {isListening
+                      ? (voiceLang === "mr-IN" ? "Listening in Marathi... (Tap to stop)" : voiceLang === "hi-IN" ? "Listening in Hindi... (Tap to stop)" : "Listening in English... (Tap to stop)")
+                      : (voiceLang === "mr-IN" ? "Start Voice Dictation (मराठी)" : voiceLang === "hi-IN" ? "Start Voice Dictation (हिन्दी)" : "Start Voice Dictation (English)")}
+                  </span>
+                </button>
+
+                {isListening && (
+                  <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-red-100 text-red-700 text-[11px] font-bold">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                    <span>Live Audio Stream Active</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Vernacular Demo Chips for Hackathon Judges */}
+              <div className="pt-1.5 border-t border-blue-100/60 dark:border-blue-900/30 flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] uppercase font-bold text-on-surface-variant">
+                  Quick Demo Voice Prompts:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleApplySampleVoice("mr-IN")}
+                  className="px-2 py-0.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-[11px] text-on-surface border border-surface-container transition-colors flex items-center gap-1"
+                >
+                  <span>🗣️</span> <span>मराठी: रस्त्यावरील खड्डा</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApplySampleVoice("hi-IN")}
+                  className="px-2 py-0.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-[11px] text-on-surface border border-surface-container transition-colors flex items-center gap-1"
+                >
+                  <span>🗣️</span> <span>हिन्दी: गहरा गड्ढा व बिजली तार</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApplySampleVoice("en-IN")}
+                  className="px-2 py-0.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-[11px] text-on-surface border border-surface-container transition-colors flex items-center gap-1"
+                >
+                  <span>🗣️</span> <span>English: Road Crater</span>
                 </button>
               </div>
+
+              {speechError && (
+                <div className="p-2 rounded-lg bg-amber-50 text-amber-900 text-[11px] flex items-center gap-1.5 border border-amber-200">
+                  <span className="material-symbols-outlined text-[16px] text-amber-700">info</span>
+                  <span>{speechError}</span>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-on-surface">Detailed Complaint</label>
               <textarea
                 rows={5}
-                placeholder="Type your complaint here or tap Voice Input..."
+                placeholder="Type your complaint here or tap Start Voice Dictation in Marathi/Hindi..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full mt-1.5 p-3 rounded-xl border border-surface-container text-xs bg-surface-container-low focus:outline-none focus:border-primary"
@@ -1002,11 +1209,18 @@ export default function SubmitGrievancePage() {
               <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
             </button>
             <button
+              onClick={() => setShowEmailModal(true)}
+              className="w-full sm:w-auto px-5 py-3 rounded-xl bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-800 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+            >
+              <span className="material-symbols-outlined text-[16px]">mark_email_read</span>
+              <span>View Official Receipt Email</span>
+            </button>
+            <button
               onClick={() => router.push("/citizen/dashboard")}
               className="w-full sm:w-auto px-5 py-3 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
             >
               <span className="material-symbols-outlined text-[16px]">dashboard</span>
-              <span>My Citizen Dashboard</span>
+              <span>Dashboard</span>
             </button>
             <button
               onClick={handleResetForm}
@@ -1016,6 +1230,29 @@ export default function SubmitGrievancePage() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Official Email Preview Modal */}
+      {submittedData && (
+        <EmailPreviewModal
+          isOpen={showEmailModal}
+          onClose={() => setShowEmailModal(false)}
+          grievance={{
+            grievanceNumber: submittedData.grievanceNumber,
+            title: submittedData.title,
+            description,
+            priority: submittedData.priority,
+            ledgerHash: submittedData.ledgerHash,
+            location: { ward, address, latitude: coords.latitude, longitude: coords.longitude },
+          }}
+          recipient={{
+            name: "Ramesh Kulkarni",
+            email: "ramesh.kulkarni@citizen.nagrik.in",
+            designation: "Citizen Complainant",
+            department: "Pune Citizen Portal",
+          }}
+          mode="CITIZEN_CONFIRMATION"
+        />
       )}
     </main>
   );
