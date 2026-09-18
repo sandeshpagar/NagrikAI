@@ -69,27 +69,8 @@ export function AppLayoutShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Close mobile drawer on Escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && mobileSidebarOpen) {
-        setMobileSidebarOpen(false);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [mobileSidebarOpen]);
-
   return (
     <>
-      {/* Accessible Skip to Content Link for Keyboard & Screen Reader Users */}
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:px-4 focus:py-2.5 focus:bg-blue-600 focus:text-white focus:font-bold focus:rounded-xl focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 text-xs transition-all"
-      >
-        Skip to main content
-      </a>
-
       <Navbar onToggleSidebar={() => setMobileSidebarOpen(!mobileSidebarOpen)} />
 
       <div className="flex-1 flex w-full">
@@ -100,12 +81,11 @@ export function AppLayoutShell({ children }: { children: React.ReactNode }) {
 
         {/* Mobile / Tablet Drawer Sidebar (Accessible via Hamburger on < 1024px) */}
         {mobileSidebarOpen && (
-          <div className="lg:hidden fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-label="Mobile Navigation Menu">
+          <div className="lg:hidden fixed inset-0 z-50 flex">
             {/* Backdrop */}
             <div
               className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
               onClick={() => setMobileSidebarOpen(false)}
-              aria-hidden="true"
             />
             {/* Slide-out Drawer */}
             <div className="relative z-50 w-72 h-full bg-surface-container-low shadow-elevated animate-in slide-in-from-left duration-200">
@@ -115,9 +95,9 @@ export function AppLayoutShell({ children }: { children: React.ReactNode }) {
         )}
 
         {/* Main Content Area */}
-        <main id="main-content" tabIndex={-1} className="flex-1 w-full lg:pl-72 pt-16 pb-20 lg:pb-8 transition-all min-w-0 focus:outline-none">
+        <div className="flex-1 w-full lg:pl-72 pt-16 pb-20 lg:pb-8 transition-all min-w-0">
           {children}
-        </main>
+        </div>
       </div>
 
       {/* Mobile Bottom Navigation (for citizen view) */}
