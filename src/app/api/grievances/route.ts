@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { analyzeGrievanceText } from "@/lib/ai/analyzer";
 import { resolveAuthority } from "@/lib/authorities/mapper";
+import { validateAndSanitizeGrievance } from "@/lib/security/sanitizer";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +75,27 @@ export async function POST(req: NextRequest) {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  // Input Sanitization & Prompt Injection Neutralization (Defense-in-depth)
+  const validation = validateAndSanitizeGrievance({
+    title: body.title || body.description?.slice(0, 50) || "Civic Complaint",
+    description: body.description || "",
+    address: body.address || "",
+  });
+
+  if (!validation.isValid) {
+    return NextResponse.json(
+      { error: "Validation failed", details: validation.errors },
+      { status: 422 }
+    );
+  }
+
+  // Override with sanitized values
+  body.title = validation.sanitized.title;
+  body.description = validation.sanitized.description;
+  if (body.address) {
+    body.address = validation.sanitized.address;
   }
 
   // 1. Attempt FastAPI Submission First

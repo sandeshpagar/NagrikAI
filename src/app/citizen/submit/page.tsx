@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useGrievances } from "@/context/GrievanceContext";
 import { EmailPreviewModal } from "@/components/email/EmailPreviewModal";
+import { validateAndSanitizeGrievance } from "@/lib/security/sanitizer";
 
 interface EvidenceItem {
   id: string;
@@ -391,13 +392,25 @@ export default function SubmitGrievancePage() {
     setIsSubmitting(true);
     setSubmitError(null);
 
-    const payload = {
-      title: title || description.slice(0, 50),
+    const sanitization = validateAndSanitizeGrievance({
+      title: title || description.slice(0, 50) || "Civic Grievance",
       description,
+      address,
+    });
+
+    if (!sanitization.isValid) {
+      setSubmitError(sanitization.errors.join(" "));
+      setIsSubmitting(false);
+      return;
+    }
+
+    const payload = {
+      title: sanitization.sanitized.title,
+      description: sanitization.sanitized.description,
       category: aiPreview?.category || "Road Infrastructure & Public Safety",
       priority: aiPreview?.priority || "HIGH",
       ward,
-      address,
+      address: sanitization.sanitized.address,
       latitude: coords.latitude,
       longitude: coords.longitude,
       location_source: locationSource,
@@ -511,22 +524,24 @@ export default function SubmitGrievancePage() {
 
           <div className="space-y-3">
             <div>
-              <label className="text-xs font-semibold text-on-surface">Title / Summary</label>
+              <label htmlFor="grievance-title" className="text-xs font-semibold text-on-surface">Title / Summary</label>
               <input
+                id="grievance-title"
                 type="text"
+                aria-required="true"
                 placeholder="e.g. Deep road crater near Sinhagad Petrol Pump"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full mt-1 p-3 rounded-xl border border-surface-container text-xs bg-surface-container-low focus:outline-none focus:border-primary"
+                className="w-full mt-1 p-3 rounded-xl border border-surface-container text-xs bg-surface-container-low focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-blue-600 min-h-[44px]"
               />
             </div>
 
             {/* Multilingual Voice Dictation Hub */}
-            <div className="p-3.5 rounded-2xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 space-y-2.5">
+            <div className="p-3.5 rounded-2xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 space-y-2.5" role="region" aria-label="Voice Dictation Assistant">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-on-surface flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[18px] text-blue-600">record_voice_over</span>
+                    <span className="material-symbols-outlined text-[18px] text-blue-600" aria-hidden="true">record_voice_over</span>
                     <span>Multilingual Voice Dictation</span>
                   </span>
                   <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-[10px] font-bold">
@@ -535,36 +550,42 @@ export default function SubmitGrievancePage() {
                 </div>
 
                 {/* Language Switcher */}
-                <div className="flex items-center rounded-xl bg-surface-container-lowest p-0.5 border border-surface-container text-xs font-semibold">
+                <div className="flex items-center rounded-xl bg-surface-container-lowest p-0.5 border border-surface-container text-xs font-semibold" role="radiogroup" aria-label="Dictation Language">
                   <button
                     type="button"
+                    role="radio"
+                    aria-checked={voiceLang === "mr-IN"}
                     onClick={() => setVoiceLang("mr-IN")}
                     className={
                       voiceLang === "mr-IN"
-                        ? "px-2.5 py-1 rounded-lg transition-all text-[11px] bg-blue-600 text-white font-bold shadow-xs"
-                        : "px-2.5 py-1 rounded-lg transition-all text-[11px] text-on-surface-variant hover:text-on-surface"
+                        ? "px-2.5 py-1.5 rounded-lg transition-all text-[11px] bg-blue-600 text-white font-bold shadow-xs min-h-[36px] flex items-center"
+                        : "px-2.5 py-1.5 rounded-lg transition-all text-[11px] text-on-surface-variant hover:text-on-surface min-h-[36px] flex items-center"
                     }
                   >
                     🇮🇳 मराठी
                   </button>
                   <button
                     type="button"
+                    role="radio"
+                    aria-checked={voiceLang === "hi-IN"}
                     onClick={() => setVoiceLang("hi-IN")}
                     className={
                       voiceLang === "hi-IN"
-                        ? "px-2.5 py-1 rounded-lg transition-all text-[11px] bg-blue-600 text-white font-bold shadow-xs"
-                        : "px-2.5 py-1 rounded-lg transition-all text-[11px] text-on-surface-variant hover:text-on-surface"
+                        ? "px-2.5 py-1.5 rounded-lg transition-all text-[11px] bg-blue-600 text-white font-bold shadow-xs min-h-[36px] flex items-center"
+                        : "px-2.5 py-1.5 rounded-lg transition-all text-[11px] text-on-surface-variant hover:text-on-surface min-h-[36px] flex items-center"
                     }
                   >
                     🇮🇳 हिन्दी
                   </button>
                   <button
                     type="button"
+                    role="radio"
+                    aria-checked={voiceLang === "en-IN"}
                     onClick={() => setVoiceLang("en-IN")}
                     className={
                       voiceLang === "en-IN"
-                        ? "px-2.5 py-1 rounded-lg transition-all text-[11px] bg-blue-600 text-white font-bold shadow-xs"
-                        : "px-2.5 py-1 rounded-lg transition-all text-[11px] text-on-surface-variant hover:text-on-surface"
+                        ? "px-2.5 py-1.5 rounded-lg transition-all text-[11px] bg-blue-600 text-white font-bold shadow-xs min-h-[36px] flex items-center"
+                        : "px-2.5 py-1.5 rounded-lg transition-all text-[11px] text-on-surface-variant hover:text-on-surface min-h-[36px] flex items-center"
                     }
                   >
                     🌐 English
@@ -577,13 +598,15 @@ export default function SubmitGrievancePage() {
                 <button
                   type="button"
                   onClick={toggleSpeechRecognition}
+                  aria-pressed={isListening}
+                  aria-label={isListening ? "Stop voice dictation" : "Start voice dictation"}
                   className={
                     isListening
-                      ? "flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm bg-red-500 text-white animate-pulse ring-4 ring-red-400/40"
-                      : "flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm bg-blue-600 hover:bg-blue-700 text-white"
+                      ? "flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm bg-red-500 text-white animate-pulse ring-4 ring-red-400/40 min-h-[44px]"
+                      : "flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm bg-blue-600 hover:bg-blue-700 text-white min-h-[44px]"
                   }
                 >
-                  <span className="material-symbols-outlined text-[18px]">
+                  <span className="material-symbols-outlined text-[18px]" aria-hidden="true">
                     {isListening ? "mic_off" : "mic"}
                   </span>
                   <span>
@@ -594,57 +617,62 @@ export default function SubmitGrievancePage() {
                 </button>
 
                 {isListening && (
-                  <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-red-100 text-red-700 text-[11px] font-bold">
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                  <div className="flex items-center gap-1 px-3 py-1 rounded-full bg-red-100 text-red-700 text-[11px] font-bold" aria-live="assertive">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" aria-hidden="true" />
                     <span>Live Audio Stream Active</span>
                   </div>
                 )}
               </div>
 
               {/* Quick Vernacular Demo Chips for Hackathon Judges */}
-              <div className="pt-1.5 border-t border-blue-100/60 dark:border-blue-900/30 flex flex-wrap items-center gap-1.5">
+              <div className="pt-1.5 border-t border-blue-100/60 dark:border-blue-900/30 flex flex-wrap items-center gap-1.5" aria-label="Demo Prompts">
                 <span className="text-[10px] uppercase font-bold text-on-surface-variant">
                   Quick Demo Voice Prompts:
                 </span>
                 <button
                   type="button"
                   onClick={() => handleApplySampleVoice("mr-IN")}
-                  className="px-2 py-0.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-[11px] text-on-surface border border-surface-container transition-colors flex items-center gap-1"
+                  aria-label="Apply sample voice prompt in Marathi"
+                  className="px-2.5 py-1.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-[11px] text-on-surface border border-surface-container transition-colors flex items-center gap-1 min-h-[36px]"
                 >
-                  <span>🗣️</span> <span>मराठी: रस्त्यावरील खड्डा</span>
+                  <span aria-hidden="true">🗣️</span> <span>मराठी: रस्त्यावरील खड्डा</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleApplySampleVoice("hi-IN")}
-                  className="px-2 py-0.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-[11px] text-on-surface border border-surface-container transition-colors flex items-center gap-1"
+                  aria-label="Apply sample voice prompt in Hindi"
+                  className="px-2.5 py-1.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-[11px] text-on-surface border border-surface-container transition-colors flex items-center gap-1 min-h-[36px]"
                 >
-                  <span>🗣️</span> <span>हिन्दी: गहरा गड्ढा व बिजली तार</span>
+                  <span aria-hidden="true">🗣️</span> <span>हिन्दी: गहरा गड्ढा व बिजली तार</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleApplySampleVoice("en-IN")}
-                  className="px-2 py-0.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-[11px] text-on-surface border border-surface-container transition-colors flex items-center gap-1"
+                  aria-label="Apply sample voice prompt in English"
+                  className="px-2.5 py-1.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-[11px] text-on-surface border border-surface-container transition-colors flex items-center gap-1 min-h-[36px]"
                 >
-                  <span>🗣️</span> <span>English: Road Crater</span>
+                  <span aria-hidden="true">🗣️</span> <span>English: Road Crater</span>
                 </button>
               </div>
 
               {speechError && (
-                <div className="p-2 rounded-lg bg-amber-50 text-amber-900 text-[11px] flex items-center gap-1.5 border border-amber-200">
-                  <span className="material-symbols-outlined text-[16px] text-amber-700">info</span>
+                <div className="p-2 rounded-lg bg-amber-50 text-amber-900 text-[11px] flex items-center gap-1.5 border border-amber-200" role="alert" aria-live="polite">
+                  <span className="material-symbols-outlined text-[16px] text-amber-700" aria-hidden="true">info</span>
                   <span>{speechError}</span>
                 </div>
               )}
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-on-surface">Detailed Complaint</label>
+              <label htmlFor="grievance-desc" className="text-xs font-semibold text-on-surface">Detailed Complaint</label>
               <textarea
+                id="grievance-desc"
                 rows={5}
+                aria-required="true"
                 placeholder="Type your complaint here or tap Start Voice Dictation in Marathi/Hindi..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full mt-1.5 p-3 rounded-xl border border-surface-container text-xs bg-surface-container-low focus:outline-none focus:border-primary"
+                className="w-full mt-1.5 p-3 rounded-xl border border-surface-container text-xs bg-surface-container-low focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-blue-600"
               />
             </div>
           </div>
@@ -652,7 +680,8 @@ export default function SubmitGrievancePage() {
           <div className="flex justify-end pt-2">
             <button
               onClick={handleNextFromDescribe}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-sm transition-colors"
+              aria-label="Continue to location step"
+              className="px-6 py-3 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-sm transition-colors min-h-[44px] flex items-center justify-center focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
             >
               Continue to Location &rarr;
             </button>
@@ -672,11 +701,12 @@ export default function SubmitGrievancePage() {
 
           <div className="space-y-3">
             <div>
-              <label className="text-xs font-semibold text-on-surface">Municipal Ward</label>
+              <label htmlFor="ward-select" className="text-xs font-semibold text-on-surface">Municipal Ward</label>
               <select
+                id="ward-select"
                 value={ward}
                 onChange={(e) => setWard(e.target.value)}
-                className="w-full mt-1 p-3 rounded-xl border border-surface-container text-xs bg-surface-container-low"
+                className="w-full mt-1 p-3 rounded-xl border border-surface-container text-xs bg-surface-container-low min-h-[44px] focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-blue-600"
               >
                 <option>Ward 12 - Sinhagad Zone (PMC)</option>
                 <option>Ward 8 - Shaniwar Peth / Central Pune</option>
@@ -686,19 +716,20 @@ export default function SubmitGrievancePage() {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-on-surface">Landmark / Street Address</label>
+              <label htmlFor="street-address" className="text-xs font-semibold text-on-surface">Landmark / Street Address</label>
               <input
+                id="street-address"
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="w-full mt-1 p-3 rounded-xl border border-surface-container text-xs bg-surface-container-low"
+                className="w-full mt-1 p-3 rounded-xl border border-surface-container text-xs bg-surface-container-low min-h-[44px] focus:outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-blue-600"
               />
             </div>
 
             {/* Live GPS Detection Button */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900">
               <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-blue-700 dark:text-blue-400 text-[24px]">
+                <span className="material-symbols-outlined text-blue-700 dark:text-blue-400 text-[24px]" aria-hidden="true">
                   {locationSource === "DEVICE_GPS" ? "gps_fixed" : "my_location"}
                 </span>
                 <div>
@@ -716,9 +747,10 @@ export default function SubmitGrievancePage() {
                 type="button"
                 onClick={handleDetectLiveLocation}
                 disabled={isLocating}
-                className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm disabled:opacity-60 shrink-0"
+                aria-label="Detect my current device live GPS coordinates"
+                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm disabled:opacity-60 shrink-0 min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
               >
-                <span className={`material-symbols-outlined text-[16px] ${isLocating ? "animate-spin" : ""}`}>
+                <span className={`material-symbols-outlined text-[16px] ${isLocating ? "animate-spin" : ""}`} aria-hidden="true">
                   {isLocating ? "sync" : "near_me"}
                 </span>
                 <span>{isLocating ? "Acquiring GPS..." : "Detect My Live Location"}</span>
@@ -728,7 +760,7 @@ export default function SubmitGrievancePage() {
             {/* GPS Preview Box */}
             <div className="p-4 rounded-xl bg-surface-container-low border border-surface-container flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-secondary text-[24px]">
+                <span className="material-symbols-outlined text-secondary text-[24px]" aria-hidden="true">
                   location_on
                 </span>
                 <div>
@@ -753,13 +785,15 @@ export default function SubmitGrievancePage() {
           <div className="flex justify-between pt-2">
             <button
               onClick={() => setStep(1)}
-              className="px-4 py-2 rounded-xl bg-surface-container text-xs font-semibold"
+              aria-label="Go back to step 1 description"
+              className="px-5 py-2.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-xs font-semibold min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
             >
               &larr; Back
             </button>
             <button
               onClick={() => setStep(3)}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-colors"
+              aria-label="Continue to step 3 evidence upload"
+              className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-colors min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
             >
               Continue to Evidence &rarr;
             </button>
@@ -833,28 +867,31 @@ export default function SubmitGrievancePage() {
             >
               <button
                 type="button"
+                aria-label="Browse device photo files"
                 onClick={() => fileInputRef.current?.click()}
-                className="px-3.5 py-1.5 rounded-lg bg-surface-container text-xs font-bold text-on-surface hover:bg-surface-container-high transition-colors flex items-center gap-1.5 shadow-xs"
+                className="px-4 py-2.5 min-h-[44px] rounded-xl bg-surface-container text-xs font-bold text-on-surface hover:bg-surface-container-high transition-colors flex items-center gap-1.5 shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
               >
-                <span className="material-symbols-outlined text-[16px]">folder_open</span>
+                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">folder_open</span>
                 <span>Browse Files</span>
               </button>
 
               <button
                 type="button"
+                aria-label="Open live camera to capture incident photo"
                 onClick={startCamera}
-                className="px-3.5 py-1.5 rounded-lg bg-blue-600 text-xs font-bold text-white hover:bg-blue-700 transition-colors flex items-center gap-1.5 shadow-xs"
+                className="px-4 py-2.5 min-h-[44px] rounded-xl bg-blue-600 text-xs font-bold text-white hover:bg-blue-700 transition-colors flex items-center gap-1.5 shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
               >
-                <span className="material-symbols-outlined text-[16px]">photo_camera</span>
+                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">photo_camera</span>
                 <span>Live Camera</span>
               </button>
 
               <button
                 type="button"
+                aria-label="Take quick mobile camera photo"
                 onClick={() => cameraInputRef.current?.click()}
-                className="px-3.5 py-1.5 rounded-lg bg-emerald-700 text-xs font-bold text-white hover:bg-emerald-800 transition-colors flex items-center gap-1.5 shadow-xs sm:hidden"
+                className="px-4 py-2.5 min-h-[44px] rounded-xl bg-emerald-700 text-xs font-bold text-white hover:bg-emerald-800 transition-colors flex items-center gap-1.5 shadow-xs sm:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
               >
-                <span className="material-symbols-outlined text-[16px]">camera</span>
+                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">camera</span>
                 <span>Camera Snap</span>
               </button>
             </div>
@@ -862,19 +899,20 @@ export default function SubmitGrievancePage() {
 
           {/* Live Camera Viewfinder Modal */}
           {isCameraOpen && (
-            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Camera Viewfinder">
               <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl space-y-4 p-5 text-white">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-emerald-400 text-[22px]">photo_camera</span>
+                    <span className="material-symbols-outlined text-emerald-400 text-[22px]" aria-hidden="true">photo_camera</span>
                     <h3 className="text-sm font-bold">Live Camera Viewfinder</h3>
                   </div>
                   <button
                     type="button"
                     onClick={stopCamera}
-                    className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+                    aria-label="Close camera viewfinder"
+                    className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
                   >
-                    <span className="material-symbols-outlined text-[20px]">close</span>
+                    <span className="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
                   </button>
                 </div>
 
@@ -887,7 +925,7 @@ export default function SubmitGrievancePage() {
                         stopCamera();
                         fileInputRef.current?.click();
                       }}
-                      className="px-3 py-1.5 rounded-lg bg-red-800 text-xs font-bold hover:bg-red-700"
+                      className="px-4 py-2.5 min-h-[44px] rounded-lg bg-red-800 text-xs font-bold hover:bg-red-700"
                     >
                       Choose File Instead
                     </button>
@@ -915,16 +953,16 @@ export default function SubmitGrievancePage() {
                       <button
                         type="button"
                         onClick={stopCamera}
-                        className="px-3.5 py-2 rounded-xl bg-slate-800 text-xs font-semibold hover:bg-slate-700"
+                        className="px-4 py-2.5 min-h-[44px] rounded-xl bg-slate-800 text-xs font-semibold hover:bg-slate-700"
                       >
                         Cancel
                       </button>
                       <button
                         type="button"
                         onClick={capturePhoto}
-                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg"
+                        className="px-4 py-2.5 min-h-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg"
                       >
-                        <span className="material-symbols-outlined text-[18px]">camera</span>
+                        <span className="material-symbols-outlined text-[18px]" aria-hidden="true">camera</span>
                         <span>Capture Photo</span>
                       </button>
                     </div>
@@ -938,12 +976,12 @@ export default function SubmitGrievancePage() {
           <div className="space-y-2 pt-2">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-on-surface">Attached Evidence Photos ({evidenceItems.length})</span>
-              <span className="text-[11px] text-secondary font-semibold">AI Geotag & Cryptographic SHA-256 Audit Ready</span>
+              <span className="text-[11px] text-secondary font-semibold">AI Geotag &amp; Cryptographic SHA-256 Audit Ready</span>
             </div>
 
             {evidenceItems.length === 0 ? (
               <div className="p-4 rounded-xl bg-surface-container-low text-center text-xs text-on-surface-variant">
-                No photographs attached yet. Please drag & drop or take a photo above.
+                No photographs attached yet. Please drag &amp; drop or take a photo above.
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -983,10 +1021,11 @@ export default function SubmitGrievancePage() {
                     <button
                       type="button"
                       onClick={() => handleDeleteEvidence(item.id)}
-                      className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container/20 transition-colors"
+                      aria-label={`Remove photo ${item.name}`}
+                      className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
                       title="Remove photo"
                     >
-                      <span className="material-symbols-outlined text-[18px]">delete</span>
+                      <span className="material-symbols-outlined text-[20px]" aria-hidden="true">delete</span>
                     </button>
                   </div>
                 ))}
@@ -997,16 +1036,18 @@ export default function SubmitGrievancePage() {
           <div className="flex justify-between pt-2">
             <button
               onClick={() => setStep(2)}
-              className="px-4 py-2 rounded-xl bg-surface-container text-xs font-semibold"
+              aria-label="Go back to step 2 location"
+              className="px-5 py-2.5 min-h-[44px] rounded-xl bg-surface-container text-xs font-semibold hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
             >
               &larr; Back
             </button>
             <button
               onClick={handleRunAiAnalysis}
               disabled={isAnalyzing}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition-colors disabled:opacity-50"
+              aria-label="Run automated civic AI analysis on complaint"
+              className="px-5 py-2.5 min-h-[44px] rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
             >
-              <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
+              <span className="material-symbols-outlined text-[18px]" aria-hidden="true">auto_awesome</span>
               <span>{isAnalyzing ? "Analyzing Complaint..." : "Run AI Pre-Analysis"}</span>
             </button>
           </div>
@@ -1067,13 +1108,15 @@ export default function SubmitGrievancePage() {
           <div className="flex justify-between pt-2">
             <button
               onClick={() => setStep(3)}
-              className="px-4 py-2 rounded-xl bg-surface-container text-xs font-semibold"
+              aria-label="Go back to step 3 evidence upload"
+              className="px-5 py-2.5 min-h-[44px] rounded-xl bg-surface-container hover:bg-surface-container-high text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
             >
               &larr; Back
             </button>
             <button
               onClick={() => setStep(5)}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-colors"
+              aria-label="Proceed to review and confirmation"
+              className="px-6 py-2.5 min-h-[44px] rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
             >
               Review &amp; Confirm &rarr;
             </button>
@@ -1117,7 +1160,7 @@ export default function SubmitGrievancePage() {
           </div>
 
           {submitError && (
-            <div className="p-3 rounded-xl bg-error/10 border border-error/20 text-xs text-error font-medium">
+            <div className="p-3 rounded-xl bg-error/10 border border-error/20 text-xs text-error font-medium" role="alert">
               {submitError}
             </div>
           )}
@@ -1126,18 +1169,20 @@ export default function SubmitGrievancePage() {
             <button
               onClick={() => setStep(4)}
               disabled={isSubmitting}
-              className="px-4 py-2 rounded-xl bg-surface-container text-xs font-semibold"
+              aria-label="Go back to step 4 AI triage preview"
+              className="px-5 py-2.5 min-h-[44px] rounded-xl bg-surface-container hover:bg-surface-container-high text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:opacity-50"
             >
               &larr; Back
             </button>
             <button
               onClick={handleFinalSubmit}
               disabled={isSubmitting}
-              className="px-6 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-md transition-colors disabled:opacity-50 flex items-center gap-2"
+              aria-label="Confirm and officially submit grievance to municipal ledger"
+              className="px-6 py-2.5 min-h-[44px] rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 shadow-md transition-colors disabled:opacity-50 flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
             >
               {isSubmitting ? (
                 <>
-                  <span className="material-symbols-outlined animate-spin text-[16px]">sync</span>
+                  <span className="material-symbols-outlined animate-spin text-[18px]" aria-hidden="true">sync</span>
                   <span>Submitting to Municipal Ledger...</span>
                 </>
               ) : (

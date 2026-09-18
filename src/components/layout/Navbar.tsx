@@ -53,9 +53,9 @@ export function Navbar({ onToggleSidebar }: NavbarProps = {}) {
           {onToggleSidebar && (
             <button
               onClick={onToggleSidebar}
-              className="lg:hidden p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors flex items-center justify-center"
-              title="Toggle Sidebar Menu"
-              aria-label="Toggle Sidebar Menu"
+              className="lg:hidden p-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors flex items-center justify-center min-h-[44px] min-w-[44px] focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
+              title="Toggle Navigation Menu"
+              aria-label="Toggle Navigation Menu"
             >
               <span className="material-symbols-outlined text-[24px]">menu</span>
             </button>
@@ -100,24 +100,26 @@ export function Navbar({ onToggleSidebar }: NavbarProps = {}) {
             <input
               type="text"
               placeholder="Search GRV-2026-1042..."
+              aria-label="Search grievances by number or keyword"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface text-xs placeholder:text-on-surface-variant focus:outline-none focus:bg-surface-container-high transition-colors border border-transparent focus:border-primary/20"
+              className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface text-xs placeholder:text-on-surface-variant focus:outline-none focus:bg-surface-container-high transition-colors border border-transparent focus:border-primary/20 focus-visible:ring-2 focus-visible:ring-blue-600"
             />
           </div>
 
           {/* Multilingual Switcher */}
-          <div className="hidden sm:flex items-center gap-1.5 text-on-surface-variant text-xs px-2.5 py-1 rounded bg-surface-container-low">
-            <span className="material-symbols-outlined text-[16px]">translate</span>
+          <div className="hidden sm:flex items-center gap-1.5 text-on-surface-variant text-xs px-2.5 py-1 rounded bg-surface-container-low" aria-label="Available Languages">
+            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">translate</span>
             <span>English | हिन्दी | मराठी</span>
           </div>
 
           {/* Public Civic Map Anchor CTA */}
           <Link
             href="/#civic-map"
-            className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs font-bold transition-colors border border-emerald-500/20"
+            aria-label="Go to Live Public Civic GIS Map"
+            className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs font-bold transition-colors border border-emerald-500/20 focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:outline-none"
           >
-            <span className="material-symbols-outlined text-[16px]">map</span>
+            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">map</span>
             <span>Live Civic Map</span>
           </Link>
 
@@ -126,9 +128,10 @@ export function Navbar({ onToggleSidebar }: NavbarProps = {}) {
           {!isAuthenticated ? (
             <Link
               href="/auth/login"
-              className="px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition-colors"
+              aria-label="Sign in to official portal"
+              className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition-colors min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
             >
-              <span className="material-symbols-outlined text-[16px]">lock_open</span>
+              <span className="material-symbols-outlined text-[16px]" aria-hidden="true">lock_open</span>
               <span>Official Sign In</span>
             </Link>
           ) : (
@@ -137,12 +140,15 @@ export function Navbar({ onToggleSidebar }: NavbarProps = {}) {
               <div className="relative">
                 <button
                   onClick={() => setShowNotifMenu(!showNotifMenu)}
-                  className="relative p-2 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
+                  className="relative p-2 rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
                   title="Notifications"
+                  aria-label={`Notifications (${unreadCount} unread)`}
+                  aria-expanded={showNotifMenu}
+                  aria-haspopup="true"
                 >
                   <span className="material-symbols-outlined text-[22px]">notifications</span>
                   {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-error text-error-foreground text-[10px] flex items-center justify-center font-bold">
+                    <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-error text-error-foreground text-[10px] flex items-center justify-center font-bold" aria-hidden="true">
                       {unreadCount}
                     </span>
                   )}
@@ -168,7 +174,10 @@ export function Navbar({ onToggleSidebar }: NavbarProps = {}) {
               <div className="relative">
                 <button
                   onClick={() => setShowRoleMenu(!showRoleMenu)}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-left"
+                  aria-label={`Current persona: ${currentUser.fullName}, ${currentUser.designation || currentUser.role}. Click to switch role.`}
+                  aria-expanded={showRoleMenu}
+                  aria-haspopup="true"
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-surface-container hover:bg-surface-container-high transition-colors text-left min-h-[44px] focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
                 >
                   <img
                     alt="Profile"

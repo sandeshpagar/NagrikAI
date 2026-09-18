@@ -364,14 +364,19 @@ export function PublicCivicMap() {
 
         {/* Live Status Ribbon and Filtering Pills */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-surface-container">
-          {/* Status Filters */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
+          {/* Status Filter Chips */}
+          <div
+            role="group"
+            aria-label="Filter grievances by status"
+            className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0"
+          >
+            <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mr-1">
               Status:
             </span>
             <button
               onClick={() => setStatusFilter("ALL")}
-              className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all ${
+              aria-pressed={statusFilter === "ALL"}
+              className={`px-3 py-2 min-h-[40px] rounded-xl text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                 statusFilter === "ALL"
                   ? "bg-on-surface text-surface font-bold shadow-xs"
                   : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container"
@@ -381,48 +386,53 @@ export function PublicCivicMap() {
             </button>
             <button
               onClick={() => setStatusFilter("REGISTERED")}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold transition-all ${
+              aria-pressed={statusFilter === "REGISTERED"}
+              className={`flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-xl text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                 statusFilter === "REGISTERED"
                   ? "bg-red-500 text-white font-bold shadow-xs"
                   : "bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-500/20"
               }`}
             >
-              <span className="w-2 h-2 rounded-full bg-red-500" />
+              <span className="w-2 h-2 rounded-full bg-red-500" aria-hidden="true" />
               Registered ({registeredCount})
             </button>
             <button
               onClick={() => setStatusFilter("IN_PROGRESS")}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold transition-all ${
+              aria-pressed={statusFilter === "IN_PROGRESS"}
+              className={`flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-xl text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                 statusFilter === "IN_PROGRESS"
                   ? "bg-amber-500 text-white font-bold shadow-xs"
                   : "bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20"
               }`}
             >
-              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <span className="w-2 h-2 rounded-full bg-amber-500" aria-hidden="true" />
               In Progress ({inProgressCount})
             </button>
             <button
               onClick={() => setStatusFilter("RESOLVED")}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold transition-all ${
+              aria-pressed={statusFilter === "RESOLVED"}
+              className={`flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-xl text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                 statusFilter === "RESOLVED"
                   ? "bg-emerald-600 text-white font-bold shadow-xs"
                   : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20"
               }`}
             >
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
               Resolved ({resolvedCount})
             </button>
           </div>
 
           {/* Ward Selector & Center Button */}
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
+            <label htmlFor="map-ward-select" className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
               Ward:
-            </span>
+            </label>
             <select
+              id="map-ward-select"
+              aria-label="Filter grievances by PMC ward"
               value={wardFilter}
               onChange={(e) => handleWardChange(e.target.value)}
-              className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-surface-container-low border border-surface-container text-on-surface focus:outline-none focus:ring-1 focus:ring-primary shadow-xs"
+              className="px-3 py-2 min-h-[40px] text-xs font-semibold rounded-xl bg-surface-container-low border border-surface-container text-on-surface focus:outline-none focus:ring-2 focus:ring-primary shadow-xs"
             >
               <option value="ALL">All PMC Wards (Sinhagad, Kothrud, Deccan, Shivajinagar)</option>
               <option value="Ward 12">Ward 12 · Sinhagad Road</option>
@@ -433,10 +443,11 @@ export function PublicCivicMap() {
 
             <button
               onClick={handleCenterPune}
-              className="p-1.5 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors border border-surface-container"
+              aria-label="Reset map view to Pune City Center"
+              className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors border border-surface-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               title="Reset to Pune City Center"
             >
-              <span className="material-symbols-outlined text-[18px]">my_location</span>
+              <span className="material-symbols-outlined text-[20px]" aria-hidden="true">my_location</span>
             </button>
           </div>
         </div>
@@ -468,13 +479,17 @@ export function PublicCivicMap() {
       `}</style>
 
       {/* Main Interactive Real GIS Map Canvas */}
-      <div className="relative w-full h-[540px] rounded-3xl overflow-hidden border border-surface-container shadow-elevated bg-slate-100 dark:bg-slate-900">
+      <div 
+        role="region"
+        aria-label="Interactive Civic Grievance GIS Map of Pune"
+        className="relative w-full h-[540px] rounded-3xl overflow-hidden border border-surface-container shadow-elevated bg-slate-100 dark:bg-slate-900"
+      >
         {/* Real Leaflet Map Container */}
-        <div ref={mapContainerRef} className="w-full h-full z-0" tabIndex={0} />
+        <div ref={mapContainerRef} className="w-full h-full z-0" tabIndex={0} aria-label="GIS Map Viewport" />
 
         {/* Loading Skeleton while Leaflet CDN initializes */}
         {!isLeafletReady && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-surface-container-lowest/90 backdrop-blur-sm space-y-3">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-surface-container-lowest/90 backdrop-blur-sm space-y-3" aria-live="polite">
             <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
             <div className="text-xs font-bold text-on-surface">Loading Real-World GIS Map...</div>
             <div className="text-[11px] text-on-surface-variant">
@@ -484,46 +499,60 @@ export function PublicCivicMap() {
         )}
 
         {/* Top-Left: Street vs Satellite Imagery Toggle */}
-        <div className="absolute top-4 left-4 z-20 flex items-center p-1 rounded-2xl bg-surface/90 backdrop-blur-md border border-surface-container shadow-md">
+        <div 
+          role="radiogroup" 
+          aria-label="Map Tile Layer" 
+          className="absolute top-4 left-4 z-20 flex items-center p-1 rounded-2xl bg-surface/90 backdrop-blur-md border border-surface-container shadow-md"
+        >
           <button
+            role="radio"
+            aria-checked={mapType === "STREET"}
+            aria-label="Street View Tile Layer"
             onClick={() => setMapType("STREET")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
               mapType === "STREET"
                 ? "bg-primary text-white shadow-xs"
                 : "text-on-surface-variant hover:text-on-surface"
             }`}
           >
-            <span className="material-symbols-outlined text-[16px]">map</span>
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">map</span>
             <span>Street View</span>
           </button>
           <button
+            role="radio"
+            aria-checked={mapType === "SATELLITE"}
+            aria-label="Satellite Imagery Tile Layer"
             onClick={() => setMapType("SATELLITE")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xl text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
               mapType === "SATELLITE"
                 ? "bg-primary text-white shadow-xs"
                 : "text-on-surface-variant hover:text-on-surface"
             }`}
           >
-            <span className="material-symbols-outlined text-[16px]">satellite_alt</span>
+            <span className="material-symbols-outlined text-[18px]" aria-hidden="true">satellite_alt</span>
             <span>Satellite</span>
           </button>
         </div>
 
         {/* Bottom-Left: Map Legend Overlay Badge */}
-        <div className="absolute bottom-4 left-4 z-20 p-3 rounded-2xl bg-surface/90 backdrop-blur-md border border-surface-container shadow-md text-xs space-y-1.5 pointer-events-auto">
+        <div 
+          role="complementary"
+          aria-label="Map Legend"
+          className="absolute bottom-4 left-4 z-20 p-3 rounded-2xl bg-surface/90 backdrop-blur-md border border-surface-container shadow-md text-xs space-y-1.5 pointer-events-auto"
+        >
           <div className="font-bold text-on-surface text-[11px] uppercase tracking-wide">
             Live Pin Status
           </div>
           <div className="flex items-center gap-2 text-[11px] font-medium text-on-surface">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-red-400/50" />
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-red-400/50" aria-hidden="true" />
             <span>Complaint Registered</span>
           </div>
           <div className="flex items-center gap-2 text-[11px] font-medium text-on-surface">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-400/50" />
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-amber-400/50" aria-hidden="true" />
             <span>Work in Progress (Crew Dispatched)</span>
           </div>
           <div className="flex items-center gap-2 text-[11px] font-medium text-on-surface">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-400/50" />
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-400/50" aria-hidden="true" />
             <span>Resolved (Proof Attached)</span>
           </div>
         </div>
@@ -533,6 +562,8 @@ export function PublicCivicMap() {
       {selectedPin && (
         <div
           id="inspection-drawer"
+          role="region"
+          aria-label="Selected Grievance Inspection"
           className="p-6 rounded-3xl bg-surface-container-lowest border border-surface-container shadow-elevated space-y-6 animate-fadeIn"
         >
           {/* Modal Header */}
@@ -565,7 +596,7 @@ export function PublicCivicMap() {
                 {selectedPin.title}
               </h3>
               <p className="text-xs text-on-surface-variant mt-0.5 flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[15px] text-primary">location_on</span>
+                <span className="material-symbols-outlined text-[15px] text-primary" aria-hidden="true">location_on</span>
                 <span>{selectedPin.landmark} · {selectedPin.ward}</span>
                 <span className="text-on-surface-variant/60 font-mono text-[10px]">
                   ({selectedPin.latitude.toFixed(4)}, {selectedPin.longitude.toFixed(4)})
@@ -575,10 +606,11 @@ export function PublicCivicMap() {
 
             <button
               onClick={() => setSelectedPin(null)}
-              className="self-start sm:self-center px-3 py-1.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold transition-all flex items-center gap-1"
+              aria-label="Close grievance inspection details"
+              className="self-start sm:self-center px-4 py-2 min-h-[44px] rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold transition-all flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <span>Close Inspection</span>
-              <span className="text-sm">✕</span>
+              <span className="text-sm" aria-hidden="true">✕</span>
             </button>
           </div>
 
