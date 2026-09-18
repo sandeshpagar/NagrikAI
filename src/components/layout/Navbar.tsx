@@ -112,6 +112,15 @@ export function Navbar({ onToggleSidebar }: NavbarProps = {}) {
             <span>English | हिन्दी | मराठी</span>
           </div>
 
+          {/* Public Civic Map Anchor CTA */}
+          <Link
+            href="/#civic-map"
+            className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs font-bold transition-colors border border-emerald-500/20"
+          >
+            <span className="material-symbols-outlined text-[16px]">map</span>
+            <span>Live Civic Map</span>
+          </Link>
+
           {/* Notification Center */}
           {/* Unauthenticated State: Clean Sign In CTA */}
           {!isAuthenticated ? (

@@ -103,6 +103,14 @@ export function Sidebar({ onCloseMobile, isDrawer = false }: SidebarProps = {}) 
                   <span className="material-symbols-outlined text-[20px]">inbox</span>
                   <span>Track Case</span>
                 </Link>
+                <Link
+                  href="/#civic-map"
+                  onClick={handleLinkClick}
+                  className={navItemClass("/#civic-map")}
+                >
+                  <span className="material-symbols-outlined text-[20px]">map</span>
+                  <span>Public Civic Map</span>
+                </Link>
               </>
             ) : (
               <>
@@ -121,6 +129,14 @@ export function Sidebar({ onCloseMobile, isDrawer = false }: SidebarProps = {}) 
                 >
                   <span className="material-symbols-outlined text-[20px]">inbox</span>
                   <span>Flagship Dossier (GRV-1042)</span>
+                </Link>
+                <Link
+                  href="/#civic-map"
+                  onClick={handleLinkClick}
+                  className={navItemClass("/#civic-map")}
+                >
+                  <span className="material-symbols-outlined text-[20px]">map</span>
+                  <span>Public Civic Map</span>
                 </Link>
                 {role === "SYSTEM_ADMIN" && (
                   <Link

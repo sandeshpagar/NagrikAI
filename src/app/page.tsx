@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import { PublicCivicMap } from "@/components/map/PublicCivicMap";
 
 export default function HomePage() {
   const { role, switchRole } = useAuth();
@@ -45,6 +46,11 @@ export default function HomePage() {
 
         {/* Decorative Background Glow */}
         <div className="absolute -right-20 -bottom-20 w-96 h-96 bg-secondary-container/20 rounded-full blur-3xl pointer-events-none"></div>
+      </section>
+
+      {/* Public Interactive Civic Map (No Login Required) */}
+      <section id="civic-map" className="space-y-4">
+        <PublicCivicMap />
       </section>
 
       {/* Live System Metrics Bar */}
